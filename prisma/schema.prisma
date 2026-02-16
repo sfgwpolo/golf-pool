@@ -1,0 +1,98 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Organization {
+  id    String @id @default(cuid())
+  name  String
+  slug  String @unique
+
+  pools Pool[]
+}
+
+model Pool {
+  id             String   @id @default(cuid())
+  orgId          String
+  year           Int
+  name           String
+  tournamentKey  String
+  startsAt       DateTime
+  entriesCloseAt DateTime
+  weightsJson    Json     @default("{\"1\":10,\"2\":9,\"3\":8,\"4\":7,\"5\":6,\"6\":5,\"7\":4,\"8\":3,\"9\":2,\"10\":1}")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  entries       Entry[]
+  snapshots     TournamentSnapshot[]
+}
+
+model Entry {
+  id        String   @id @default(cuid())
+  poolId    String
+  entryName String
+  email     String
+  locked    Boolean  @default(false)
+
+  // payment tracking
+  isPaid     Boolean   @default(false)
+  paidAt     DateTime?
+  paidAmount Decimal?  @db.Decimal(10, 2)
+  paidMethod String?
+  paidNote   String?
+
+  // soft delete for "remove unpaid after lock"
+  isDeleted Boolean  @default(false)
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pool   Pool @relation(fields: [poolId], references: [id])
+  picks  EntryPick[]
+  scores ComputedEntryScore[]
+}
+
+model EntryPick {
+  id         String @id @default(cuid())
+  entryId    String
+  rank       Int
+  golferId   String
+  golferName String
+
+  entry Entry @relation(fields: [entryId], references: [id])
+
+  @@unique([entryId, rank])
+  @@unique([entryId, golferId])
+}
+
+model TournamentSnapshot {
+  id        String   @id @default(cuid())
+  poolId    String
+  fetchedAt DateTime @default(now())
+  raw       Json
+
+  pool Pool @relation(fields: [poolId], references: [id])
+
+  @@index([poolId, fetchedAt])
+}
+
+model ComputedEntryScore {
+  id        String   @id @default(cuid())
+  entryId   String
+  fetchedAt DateTime @default(now())
+  score     Decimal  @db.Decimal(18, 2)
+  details   Json
+
+  entry Entry @relation(fields: [entryId], references: [id])
+
+  @@index([entryId, fetchedAt])
+}
