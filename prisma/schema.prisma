@@ -78,9 +78,10 @@ model TournamentSnapshot {
   id        String   @id @default(cuid())
   poolId    String
   fetchedAt DateTime @default(now())
-  raw       Json
+  source    String
+  rawJson   Json
 
-  pool Pool @relation(fields: [poolId], references: [id])
+  pool      Pool      @relation(fields: [poolId], references: [id], onDelete: Cascade)
 
   @@index([poolId, fetchedAt])
 }

@@ -99,6 +99,21 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
     }
   }
 
+  async function refreshSnapshot() {
+    setErr("");
+    try {
+      const res = await fetch(`/api/admin/pools/${poolId}/refresh-snapshot`, {
+        method: "POST",
+        headers: { "x-admin-token": adminToken },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to refresh snapshot");
+      alert(`Snapshot saved (${data.count} golfers).`);
+    } catch (e: any) {
+      setErr(e?.message ?? "Error");
+    }
+  }
+
   async function purgeUnpaid() {
     setErr("");
     try {
@@ -146,6 +161,12 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
             style={{ padding: "8px 12px", border: "1px solid #ccc", borderRadius: 6, cursor: "pointer" }}
           >
             Refresh
+          </button>
+          <button
+            onClick={refreshSnapshot}
+            style={{ padding: "8px 12px", border: "1px solid #ccc", borderRadius: 6, cursor: "pointer" }}
+          >
+            Refresh Snapshot
           </button>
           <button
             onClick={purgeUnpaid}
@@ -256,3 +277,5 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
     </div>
   );
 }
+
+
