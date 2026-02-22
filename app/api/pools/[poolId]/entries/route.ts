@@ -37,7 +37,7 @@ export async function POST(
     const pool = await prisma.pool.findUnique({ where: { id: poolId } });
     if (!pool) return NextResponse.json({ error: "Pool not found" }, { status: 404 });
 
-    if (new Date() >= new Date(pool.entriesCloseAt)) {
+    if (new Date() >= new Date(pool.entriesCloseAt) || pool.locked) {
       return NextResponse.json({ error: "Entries are closed for this pool" }, { status: 403 });
     }
 

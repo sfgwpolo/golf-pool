@@ -23,6 +23,7 @@ type PoolInfo = {
   name: string;
   entriesCloseAt: string;
   startsAt: string;
+  locked: boolean;
 };
 
 export default function LeaderboardClient({ poolId }: { poolId: string }) {
@@ -35,12 +36,19 @@ export default function LeaderboardClient({ poolId }: { poolId: string }) {
   async function load() {
     setErr("");
     setLoading(true);
+
     try {
       const res = await fetch(`/api/pools/${poolId}/leaderboard`, {
         cache: "no-store",
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to load leaderboard");
+
+      const text = await res.text();
+      const data = text ? JSON.parse(text) : null;
+
+      if (!res.ok)
+        throw new Error(
+          data?.error || `Failed to load leaderboard (${res.status})`,
+        );
 
       setPool(data.pool);
       setRows(data.leaderboard);
@@ -54,13 +62,39 @@ export default function LeaderboardClient({ poolId }: { poolId: string }) {
 
   useEffect(() => {
     load();
-    const id = setInterval(() => load(), 15000); // refresh every 15s
-    return () => clearInterval(id);
+
+    const intervalMs = 60_000;
+
+    const tick = () => {
+      if (document.visibilityState === "visible") {
+        load();
+      }
+    };
+
+    const id = window.setInterval(tick, intervalMs);
+
+    const onVis = () => {
+      if (document.visibilityState === "visible") {
+        load();
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poolId]);
 
   return (
-    <div style={{ padding: 20, fontFamily: "system-ui, sans-serif", maxWidth: 900 }}>
+    <div
+      style={{
+        padding: 20,
+        fontFamily: "system-ui, sans-serif",
+        maxWidth: 900,
+      }}
+    >
       <h1 style={{ fontSize: 26, fontWeight: 800 }}>
         {pool?.name || "Leaderboard"}
       </h1>
@@ -76,7 +110,14 @@ export default function LeaderboardClient({ poolId }: { poolId: string }) {
         </div>
       )}
 
-      <div style={{ marginTop: 10, display: "flex", gap: 10, alignItems: "center" }}>
+      <div
+        style={{
+          marginTop: 10,
+          display: "flex",
+          gap: 10,
+          alignItems: "center",
+        }}
+      >
         <button
           onClick={load}
           style={{ padding: "8px 12px", cursor: "pointer" }}
@@ -87,7 +128,7 @@ export default function LeaderboardClient({ poolId }: { poolId: string }) {
 
         {generatedAt && (
           <div style={{ fontSize: 13, opacity: 0.7 }}>
-            Updated: {new Date(generatedAt).toLocaleTimeString()}
+            (auto every 60s) {new Date(generatedAt).toLocaleTimeString()}
           </div>
         )}
       </div>
@@ -112,10 +153,31 @@ export default function LeaderboardClient({ poolId }: { poolId: string }) {
                 borderRadius: 8,
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 12,
+                }}
+              >
                 <div>
                   <div style={{ fontSize: 18, fontWeight: 700 }}>
-                    {idx + 1}. {r.entryName} {r.isPaid ? "✓ Paid" : ""}
+                    {idx + 1}. {r.entryName}{" "}
+                    {r.isPaid ? (
+                      <span
+                        style={{
+                          marginLeft: 8,
+                          color: "green",
+                          fontWeight: 600,
+                        }}
+                      >
+                        ✓ Paid
+                      </span>
+                    ) : (
+                      <span style={{ marginLeft: 8, color: "#999" }}>
+                        Unpaid
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: 12, opacity: 0.7 }}>
                     Submitted: {new Date(r.createdAt).toLocaleString()}
@@ -123,7 +185,9 @@ export default function LeaderboardClient({ poolId }: { poolId: string }) {
                 </div>
 
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: 12, opacity: 0.7 }}>Score (placeholder)</div>
+                  <div style={{ fontSize: 12, opacity: 0.7 }}>
+                    Score (placeholder)
+                  </div>
                   <div style={{ fontSize: 20, fontWeight: 800 }}>{r.score}</div>
                 </div>
               </div>

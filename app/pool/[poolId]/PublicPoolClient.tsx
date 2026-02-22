@@ -13,6 +13,7 @@ type PoolInfo = {
   id: string;
   name: string;
   entriesCloseAt: string;
+  locked: boolean;
 };
 
 type Golfer = { golferId: string; golferName: string };
@@ -33,6 +34,9 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
   } | null>(null);
 
   const [autoFillMsg, setAutoFillMsg] = useState<Record<number, string>>({});
+  const [editEmail, setEditEmail] = useState("");
+  const [foundEntries, setFoundEntries] = useState<EntrySummary[]>([]);
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/pools/${poolId}/golfers`)
@@ -52,7 +56,7 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
 
   const isLocked = useMemo(() => {
     if (!pool) return false;
-    return new Date() >= new Date(pool.entriesCloseAt);
+    return new Date() >= new Date(pool.entriesCloseAt) || pool.locked;
   }, [pool]);
 
   const isValid = useMemo(() => {
@@ -104,19 +108,33 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
         })),
       };
 
-      const res = await fetch(`/api/pools/${poolId}/entries`, {
-        method: "POST",
+      const endpoint = editingEntryId
+        ? `/api/pools/${poolId}/entries/${editingEntryId}`
+        : `/api/pools/${poolId}/entries`;
+
+      const method = editingEntryId ? "PUT" : "POST";
+
+      const res = await fetch(endpoint, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      const data = text ? JSON.parse(text) : null;
       if (!res.ok) throw new Error(data?.error || "Submission failed");
 
-      setMessage("Entry submitted successfully!");
+      setMessage(
+        editingEntryId
+          ? "Entry updated successfully!"
+          : "Entry submitted successfully!",
+      );
       setEntryName("");
       setEmail("");
       setPicks(Array(10).fill(""));
+      setEditingEntryId(null);
+      setFoundEntries([]);
+      setEditEmail("");
 
       // reload list
       const reload = await fetch(`/api/pools/${poolId}/entries/list`);
@@ -221,6 +239,43 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
     }
   }
 
+  async function findEntriesByEmail() {
+    if (!editEmail.trim()) return;
+
+    try {
+      const res = await fetch(
+        `/api/pools/${poolId}/entries/by-email?email=${encodeURIComponent(
+          editEmail.trim().toLowerCase(),
+        )}`,
+      );
+      const data = await res.json();
+      setFoundEntries(data.entries || []);
+    } catch {
+      setFoundEntries([]);
+    }
+  }
+
+  async function loadEntry(entryId: string) {
+    try {
+      const res = await fetch(`/api/pools/${poolId}/entries/${entryId}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to load entry");
+
+      setEditingEntryId(entryId);
+      setEntryName(data.entry.entryName);
+      setEmail(data.entry.email);
+      setPicks(
+        data.entry.picks
+          .sort((a: any, b: any) => a.rank - b.rank)
+          .map((p: any) => p.golferName),
+      );
+
+      setMessage("Editing existing entry");
+    } catch (e: any) {
+      setMessage(e?.message || "Error loading entry");
+    }
+  }
+
   return (
     <div
       style={{
@@ -252,6 +307,39 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
           Entries are now closed.
         </div>
       )}
+
+      <div style={{ marginTop: 20 }}>
+        <h3>Edit Existing Entry</h3>
+
+        <input
+          value={editEmail}
+          onChange={(e) => setEditEmail(e.target.value)}
+          placeholder="Enter your email"
+          style={{ width: "100%", padding: 8, marginTop: 8 }}
+        />
+
+        <button
+          onClick={findEntriesByEmail}
+          style={{ marginTop: 8, padding: "6px 10px" }}
+        >
+          Find My Entries
+        </button>
+
+        {foundEntries.length > 0 && (
+          <ul style={{ marginTop: 10 }}>
+            {foundEntries.map((e) => (
+              <li key={e.id}>
+                <button
+                  onClick={() => loadEntry(e.id)}
+                  style={{ cursor: "pointer" }}
+                >
+                  {e.entryName} – {new Date(e.createdAt).toLocaleString()}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       <div style={{ marginTop: 20 }}>
         <h3>Submit Entry</h3>
@@ -340,7 +428,11 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
             opacity: disableSubmit ? 0.5 : 1,
           }}
         >
-          {loading ? "Submitting..." : "Submit Entry"}
+          {loading
+            ? "Saving..."
+            : editingEntryId
+              ? "Save Changes"
+              : "Submit Entry"}
         </button>
 
         {message && (

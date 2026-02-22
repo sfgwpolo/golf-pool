@@ -31,6 +31,7 @@ export async function GET(
         name: pool.name,
         startsAt: pool.startsAt,
         entriesCloseAt: pool.entriesCloseAt,
+        locked: pool.locked,
       },
       entries,
       now: new Date().toISOString(),

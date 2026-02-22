@@ -72,6 +72,7 @@ export async function GET(
       name: pool.name,
       entriesCloseAt: pool.entriesCloseAt,
       startsAt: pool.startsAt,
+      locked: pool.locked,
     },
     leaderboard: scored,
     snapshot: latest

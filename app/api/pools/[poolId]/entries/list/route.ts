@@ -31,6 +31,7 @@ export async function GET(
       id: pool.id,
       name: pool.name,
       entriesCloseAt: pool.entriesCloseAt,
+      locked: pool.locked,
     },
     entries,
   });
