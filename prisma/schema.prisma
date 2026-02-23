@@ -28,6 +28,7 @@ model Pool {
   tournamentKey  String
   startsAt       DateTime
   entriesCloseAt DateTime
+  locked         Boolean  @default(false)
   weightsJson    Json     @default("{\"1\":10,\"2\":9,\"3\":8,\"4\":7,\"5\":6,\"6\":5,\"7\":4,\"8\":3,\"9\":2,\"10\":1}")
 
   organization Organization @relation(fields: [orgId], references: [id])
@@ -78,9 +79,10 @@ model TournamentSnapshot {
   id        String   @id @default(cuid())
   poolId    String
   fetchedAt DateTime @default(now())
-  raw       Json
+  source    String
+  rawJson   Json
 
-  pool Pool @relation(fields: [poolId], references: [id])
+  pool      Pool      @relation(fields: [poolId], references: [id], onDelete: Cascade)
 
   @@index([poolId, fetchedAt])
 }

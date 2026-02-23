@@ -29,6 +29,7 @@ type PoolInfo = {
   name: string;
   startsAt: string;
   entriesCloseAt: string;
+  locked: boolean;
 };
 
 export default function AdminPoolClient({ poolId }: { poolId: string }) {
@@ -99,6 +100,21 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
     }
   }
 
+  async function refreshSnapshot() {
+    setErr("");
+    try {
+      const res = await fetch(`/api/admin/pools/${poolId}/refresh-snapshot`, {
+        method: "POST",
+        headers: { "x-admin-token": adminToken },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to refresh snapshot");
+      alert(`Snapshot saved (${data.count} golfers).`);
+    } catch (e: any) {
+      setErr(e?.message ?? "Error");
+    }
+  }
+
   async function purgeUnpaid() {
     setErr("");
     try {
@@ -117,7 +133,7 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
   }
 
   const entriesCloseAt = pool ? new Date(pool.entriesCloseAt) : null;
-  const canPurge = entriesCloseAt ? now >= entriesCloseAt : false;
+  const canPurge = entriesCloseAt ? now >= entriesCloseAt || (pool && pool.locked) : false;
 
   return (
     <div style={{ padding: 16, fontFamily: "system-ui, sans-serif" }}>
@@ -126,31 +142,77 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
         Pool ID: <code>{poolId}</code>
       </div>
 
-      <div style={{ marginTop: 16, padding: 12, border: "1px solid #ddd", borderRadius: 8 }}>
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>Admin Token (prototype)</div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <div
+        style={{
+          marginTop: 16,
+          padding: 12,
+          border: "1px solid #ddd",
+          borderRadius: 8,
+        }}
+      >
+        <div style={{ fontWeight: 600, marginBottom: 8 }}>
+          Admin Token (prototype)
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
           <input
             value={adminToken}
             onChange={(e) => setAdminToken(e.target.value)}
             placeholder="Paste ADMIN_TOKEN from .env"
-            style={{ minWidth: 320, padding: 8, border: "1px solid #ccc", borderRadius: 6 }}
+            style={{
+              minWidth: 320,
+              padding: 8,
+              border: "1px solid #ccc",
+              borderRadius: 6,
+            }}
           />
           <button
             onClick={saveTokenAndLoad}
-            style={{ padding: "8px 12px", border: "1px solid #ccc", borderRadius: 6, cursor: "pointer" }}
+            style={{
+              padding: "8px 12px",
+              border: "1px solid #ccc",
+              borderRadius: 6,
+              cursor: "pointer",
+            }}
           >
             Load entries
           </button>
           <button
             onClick={() => fetchEntries(adminToken)}
-            style={{ padding: "8px 12px", border: "1px solid #ccc", borderRadius: 6, cursor: "pointer" }}
+            style={{
+              padding: "8px 12px",
+              border: "1px solid #ccc",
+              borderRadius: 6,
+              cursor: "pointer",
+            }}
           >
             Refresh
           </button>
           <button
+            onClick={refreshSnapshot}
+            style={{
+              padding: "8px 12px",
+              border: "1px solid #ccc",
+              borderRadius: 6,
+              cursor: "pointer",
+            }}
+          >
+            Refresh Snapshot
+          </button>
+          <button
             onClick={purgeUnpaid}
             disabled={!canPurge}
-            title={!canPurge ? "Disabled until entriesCloseAt" : "Soft-delete unpaid entries"}
+            title={
+              !canPurge
+                ? "Disabled until entriesCloseAt"
+                : "Soft-delete unpaid entries"
+            }
             style={{
               padding: "8px 12px",
               border: "1px solid #ccc",
@@ -168,8 +230,37 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
             <div>
               <strong>{pool.name}</strong>
             </div>
-            <div>entriesCloseAt: {new Date(pool.entriesCloseAt).toLocaleString()}</div>
+            <div>
+              entriesCloseAt: {new Date(pool.entriesCloseAt).toLocaleString()}
+            </div>
             <div>startsAt: {new Date(pool.startsAt).toLocaleString()}</div>
+            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={pool.locked}
+                onChange={async (e) => {
+                  const res = await fetch(`/api/admin/pools/${pool.id}/lock`, {
+                    method: "PATCH",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "x-admin-token": adminToken,
+                    },
+                    body: JSON.stringify({ locked: e.target.checked }),
+                  });
+
+                  const text = await res.text();
+                  const data = text ? JSON.parse(text) : null;
+                  if (!res.ok)
+                    throw new Error(
+                      data?.error || `Request failed (${res.status})`,
+                    );
+
+                  // refresh UI
+                  await fetchEntries(adminToken);
+                }}
+              />
+              Manually lock pool (stop edits/entries)
+            </label>
           </div>
         )}
 
@@ -187,10 +278,23 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
           <div style={{ opacity: 0.8 }}>No entries loaded yet.</div>
         ) : (
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 8 }}>
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                marginTop: 8,
+              }}
+            >
               <thead>
                 <tr>
-                  {["Paid", "Entry", "Email", "Picks (1–10)", "Created", "Deleted?"].map((h) => (
+                  {[
+                    "Paid",
+                    "Entry",
+                    "Email",
+                    "Picks (1–10)",
+                    "Created",
+                    "Deleted?",
+                  ].map((h) => (
                     <th
                       key={h}
                       style={{
@@ -225,17 +329,32 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
                         <code>{e.id}</code>
                       </div>
                     </td>
-                    <td style={{ padding: 8, borderBottom: "1px solid #eee" }}>{e.email}</td>
-                    <td style={{ padding: 8, borderBottom: "1px solid #eee", minWidth: 360 }}>
+                    <td style={{ padding: 8, borderBottom: "1px solid #eee" }}>
+                      {e.email}
+                    </td>
+                    <td
+                      style={{
+                        padding: 8,
+                        borderBottom: "1px solid #eee",
+                        minWidth: 360,
+                      }}
+                    >
                       <ol style={{ margin: 0, paddingLeft: 18 }}>
                         {e.picks.map((p) => (
                           <li key={p.id} style={{ fontSize: 13 }}>
-                            {p.golferName} <span style={{ opacity: 0.6 }}>({p.golferId})</span>
+                            {p.golferName}{" "}
+                            <span style={{ opacity: 0.6 }}>({p.golferId})</span>
                           </li>
                         ))}
                       </ol>
                     </td>
-                    <td style={{ padding: 8, borderBottom: "1px solid #eee", whiteSpace: "nowrap" }}>
+                    <td
+                      style={{
+                        padding: 8,
+                        borderBottom: "1px solid #eee",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
                       {new Date(e.createdAt).toLocaleString()}
                     </td>
                     <td style={{ padding: 8, borderBottom: "1px solid #eee" }}>
@@ -247,8 +366,8 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
             </table>
 
             <div style={{ marginTop: 10, fontSize: 13, opacity: 0.75 }}>
-              Tip: the “Paid” checkbox currently defaults paidAmount=25 and paidMethod=Venmo when turning on.
-              We’ll make those editable next.
+              Tip: the “Paid” checkbox currently defaults paidAmount=25 and
+              paidMethod=Venmo when turning on. We’ll make those editable next.
             </div>
           </div>
         )}
@@ -256,3 +375,5 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
     </div>
   );
 }
+
+
