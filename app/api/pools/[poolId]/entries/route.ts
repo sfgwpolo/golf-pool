@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../../lib/prisma";
+import { validateTenUniquePicks } from "../../../../../lib/validation/picks";
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -15,30 +16,32 @@ export async function POST(
     const body = await req.json().catch(() => null);
     if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
 
+    const email = String(body.email || "")
+      .toLowerCase()
+      .trim();
+      
+    const picks = body.picks.map((p: any) => ({
+      ...p,
+      rank: Number(p.rank),
+      golferId: String(p.golferId || ""),
+      golferName: String(p.golferName || ""),
+    }));
+
     const entryName = String(body.entryName ?? "").trim();
-    const email = String(body.email ?? "").trim().toLowerCase();
-    const picks = Array.isArray(body.picks) ? body.picks : [];
 
     if (!entryName) return NextResponse.json({ error: "entryName required" }, { status: 400 });
     if (!isValidEmail(email)) return NextResponse.json({ error: "Valid email required" }, { status: 400 });
-    if (picks.length !== 10) return NextResponse.json({ error: "Exactly 10 picks required" }, { status: 400 });
-
-    const ranks = picks.map((p: any) => Number(p.rank));
-    const rankSet = new Set(ranks);
-    if (rankSet.size !== 10 || Math.min(...ranks) !== 1 || Math.max(...ranks) !== 10) {
-      return NextResponse.json({ error: "Ranks must be 1..10 unique" }, { status: 400 });
-    }
-
-    const golferIds = picks.map((p: any) => String(p.golferId));
-    if (new Set(golferIds).size !== 10) {
-      return NextResponse.json({ error: "Golfer IDs must be unique" }, { status: 400 });
-    }
 
     const pool = await prisma.pool.findUnique({ where: { id: poolId } });
     if (!pool) return NextResponse.json({ error: "Pool not found" }, { status: 404 });
 
     if (new Date() >= new Date(pool.entriesCloseAt) || pool.locked) {
       return NextResponse.json({ error: "Entries are closed for this pool" }, { status: 403 });
+    }
+
+    const check = validateTenUniquePicks(picks);
+    if (!check.ok) {
+      return NextResponse.json({ error: check.error }, { status: 400 });
     }
 
     const entry = await prisma.entry.create({
