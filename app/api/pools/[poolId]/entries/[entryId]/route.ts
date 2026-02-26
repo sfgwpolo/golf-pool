@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../../../lib/prisma";
+import { validateTenUniquePicks } from "../../../../../../lib/validation/picks";
 
 export async function GET(_req: Request, ctx: { params: Promise<{ poolId: string; entryId: string }> }) {
   const { poolId, entryId } = await ctx.params;
@@ -47,18 +48,31 @@ export async function PUT(req: Request, ctx: { params: Promise<{ poolId: string;
   }
 
   const body = await req.json().catch(() => null);
-  if (!body?.picks || !Array.isArray(body.picks) || body.picks.length !== 10) {
+  if (!body?.picks || !Array.isArray(body.picks)) {
     return NextResponse.json({ error: "Invalid picks" }, { status: 400 });
+  }
+
+  const picks = body.picks.map((p: any) => ({
+    ...p,
+    rank: Number(p.rank),
+    golferId: String(p.golferId || ""),
+    golferName: String(p.golferName || ""),
+  }));
+
+  const check = validateTenUniquePicks(picks);
+  if (!check.ok) {
+    return NextResponse.json({ error: check.error }, { status: 400 });
   }
 
   // Replace picks
   await prisma.entryPick.deleteMany({ where: { entryId } });
+
   await prisma.entryPick.createMany({
-    data: body.picks.map((p: any) => ({
+    data: picks.map((p: any) => ({
       entryId,
-      rank: Number(p.rank),
-      golferId: String(p.golferId),
-      golferName: String(p.golferName),
+      rank: p.rank,
+      golferId: p.golferId,
+      golferName: p.golferName,
     })),
   });
 
