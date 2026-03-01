@@ -37,6 +37,7 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
   const [editEmail, setEditEmail] = useState("");
   const [foundEntries, setFoundEntries] = useState<EntrySummary[]>([]);
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [passcode, setPasscode] = useState("");
 
   useEffect(() => {
     fetch(`/api/pools/${poolId}/golfers`)
@@ -62,9 +63,10 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
   const isValid = useMemo(() => {
     if (!entryName || !email) return false;
     if (picks.some((p) => !p.trim())) return false;
+    if (!passcode.trim()) return false;
     const normalized = picks.map((p) => p.trim().toLowerCase());
     return new Set(normalized).size === 10;
-  }, [entryName, email, picks]);
+  }, [entryName, email, picks, passcode]);
 
   function updatePick(index: number, value: string) {
     const next = [...picks];
@@ -101,6 +103,7 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
       const payload = {
         entryName,
         email,
+        passcode,
         picks: picks.map((name, i) => ({
           rank: i + 1,
           golferId: normalizeForMatch(name).replace(/\s+/g, "-"),
@@ -131,6 +134,7 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
       );
       setEntryName("");
       setEmail("");
+      setPasscode("");
       setPicks(Array(10).fill(""));
       setEditingEntryId(null);
       setFoundEntries([]);
@@ -355,6 +359,13 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email"
+          style={{ width: "100%", padding: 8, marginTop: 8 }}
+        />
+
+        <input
+          value={passcode}
+          onChange={(e) => setPasscode(e.target.value)}
+          placeholder="Code word (to edit later)"
           style={{ width: "100%", padding: 8, marginTop: 8 }}
         />
 

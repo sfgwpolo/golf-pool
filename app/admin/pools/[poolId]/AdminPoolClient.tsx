@@ -38,6 +38,11 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
   const [entries, setEntries] = useState<EntryRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string>("");
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetCode, setResetCode] = useState("");
+  const [resetMsg, setResetMsg] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
+
 
   const now = useMemo(() => new Date(), []);
 
@@ -132,6 +137,40 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
     }
   }
 
+async function resetPasscode() {
+  setResetMsg("");
+  setResetLoading(true);
+
+  try {
+    const res = await fetch(`/api/admin/pools/${poolId}/passcodes/reset`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "x-admin-token": adminToken, // rename if yours differs
+      },
+      body: JSON.stringify({
+        email: resetEmail.trim(),
+        newPasscode: resetCode,
+      }),
+    });
+
+    const text = await res.text();
+    const data = text ? JSON.parse(text) : null;
+
+    if (!res.ok)
+      throw new Error(data?.error || `Request failed (${res.status})`);
+
+    setResetMsg("Code word reset successfully.");
+    setResetCode("");
+    // optionally keep email for repeated resets:
+    // setResetEmail("");
+  } catch (e: any) {
+    setResetMsg(e?.message || "Error resetting code word");
+  } finally {
+    setResetLoading(false);
+  }
+}
+
   const entriesCloseAt = pool ? new Date(pool.entriesCloseAt) : null;
   const canPurge = entriesCloseAt ? now >= entriesCloseAt || (pool && pool.locked) : false;
 
@@ -224,6 +263,59 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
             Purge unpaid (after lock)
           </button>
         </div>
+
+<div
+  style={{
+    marginTop: 16,
+    padding: 12,
+    border: "1px solid #ddd",
+    borderRadius: 8,
+  }}
+>
+  <div style={{ fontSize: 16, fontWeight: 700 }}>Reset user code word</div>
+  <div style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>
+    Resets the per-pool code word for an email address. The old code word will stop working.
+  </div>
+
+  <input
+    value={resetEmail}
+    onChange={(e) => setResetEmail(e.target.value)}
+    placeholder="User email (e.g., joyce@test.com)"
+    style={{ width: "100%", padding: 8, marginTop: 10 }}
+  />
+
+  <input
+    value={resetCode}
+    onChange={(e) => setResetCode(e.target.value)}
+    placeholder="New code word (4–50 characters)"
+    style={{ width: "100%", padding: 8, marginTop: 8 }}
+  />
+
+  <button
+    onClick={resetPasscode}
+    disabled={resetLoading || !resetEmail.trim() || resetCode.trim().length < 4}
+    style={{
+      marginTop: 10,
+      padding: "8px 12px",
+      cursor:
+        resetLoading || !resetEmail.trim() || resetCode.trim().length < 4
+          ? "not-allowed"
+          : "pointer",
+      opacity:
+        resetLoading || !resetEmail.trim() || resetCode.trim().length < 4
+          ? 0.5
+          : 1,
+    }}
+  >
+    {resetLoading ? "Resetting…" : "Reset code word"}
+  </button>
+
+  {resetMsg && (
+    <div style={{ marginTop: 8, fontSize: 13 }}>
+      <strong>{resetMsg}</strong>
+    </div>
+  )}
+</div>
 
         {pool && (
           <div style={{ marginTop: 10, fontSize: 14, opacity: 0.9 }}>
