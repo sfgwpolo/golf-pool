@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../../../lib/prisma";
 import { validateTenUniquePicks } from "../../../../../../lib/validation/picks";
+import { hashPasscode, isValidPasscode } from "../../../../../../lib/passcode";
 
 export async function GET(_req: Request, ctx: { params: Promise<{ poolId: string; entryId: string }> }) {
   const { poolId, entryId } = await ctx.params;
@@ -51,6 +52,27 @@ export async function PUT(req: Request, ctx: { params: Promise<{ poolId: string;
   if (!body?.picks || !Array.isArray(body.picks)) {
     return NextResponse.json({ error: "Invalid picks" }, { status: 400 });
   }
+
+const passcode = String(body.passcode ?? "").trim();
+if (!isValidPasscode(passcode)) {
+  return NextResponse.json({ error: "Code word required." }, { status: 401 });
+}
+
+const record = await prisma.entryPasscode.findUnique({
+  where: { poolId_email: { poolId, email: entry.email } },
+});
+
+if (!record) {
+  return NextResponse.json(
+    { error: "No code word is set for this email. Ask admin to reset it." },
+    { status: 401 },
+  );
+}
+
+const passcodeHash = hashPasscode(poolId, entry.email, passcode);
+if (record.passcodeHash !== passcodeHash) {
+  return NextResponse.json({ error: "Code word incorrect." }, { status: 401 });
+}
 
   const picks = body.picks.map((p: any) => ({
     ...p,

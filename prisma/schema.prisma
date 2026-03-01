@@ -31,9 +31,10 @@ model Pool {
   locked         Boolean  @default(false)
   weightsJson    Json     @default("{\"1\":10,\"2\":9,\"3\":8,\"4\":7,\"5\":6,\"6\":5,\"7\":4,\"8\":3,\"9\":2,\"10\":1}")
 
-  organization Organization @relation(fields: [orgId], references: [id])
-  entries       Entry[]
-  snapshots     TournamentSnapshot[]
+  organization   Organization     @relation(fields: [orgId], references: [id])
+  entries        Entry[]
+  snapshots      TournamentSnapshot[]
+  entryPasscodes EntryPasscode[]
 }
 
 model Entry {
@@ -60,6 +61,20 @@ model Entry {
   pool   Pool @relation(fields: [poolId], references: [id])
   picks  EntryPick[]
   scores ComputedEntryScore[]
+}
+
+model EntryPasscode {
+  id           String   @id @default(cuid())
+  poolId       String
+  email        String
+  passcodeHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  pool Pool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+
+  @@unique([poolId, email])
+  @@index([poolId, email])
 }
 
 model EntryPick {
