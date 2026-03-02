@@ -12,12 +12,56 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum AdminRole {
+  SUPER_ADMIN
+  ORG_ADMIN
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         AdminRole @default(ORG_ADMIN)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships  OrgAdmin[]
+  sessions     AdminSession[]
+}
+
+model AdminSession {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  adminId   String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  admin AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+}
+
+model OrgAdmin {
+  id        String   @id @default(cuid())
+  orgId     String
+  adminId   String
+  createdAt DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  admin        AdminUser    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, adminId])
+  @@index([orgId])
+  @@index([adminId])
+}
+
 model Organization {
   id    String @id @default(cuid())
   name  String
   slug  String @unique
 
-  pools Pool[]
+  pools   Pool[]
+  admins  OrgAdmin[]
 }
 
 model Pool {

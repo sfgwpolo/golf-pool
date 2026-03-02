@@ -1,23 +1,18 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../../../lib/prisma";
-
-function assertAdmin(req: Request) {
-  const token = req.headers.get("x-admin-token");
-  if (!process.env.ADMIN_TOKEN || token !== process.env.ADMIN_TOKEN) {
-    throw new Error("Unauthorized");
-  }
-}
+import { requireOrgAdminForPool } from "../../../../../../lib/adminAuth";
 
 export async function GET(
   req: Request,
   context: { params: Promise<{ poolId: string }> }
 ) {
   try {
-    assertAdmin(req);
+
     const { poolId } = await context.params;
 
+    await requireOrgAdminForPool(req, poolId);
+
     const pool = await prisma.pool.findUnique({ where: { id: poolId } });
-    if (!pool) return NextResponse.json({ error: "Pool not found" }, { status: 404 });
 
     const entries = await prisma.entry.findMany({
       where: { poolId },
@@ -37,6 +32,9 @@ export async function GET(
       now: new Date().toISOString(),
     });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "Error" }, { status: 401 });
+    const msg = String(e?.message || "Unauthorized");
+    const status =
+      msg === "Forbidden" ? 403 : msg === "Pool not found" ? 404 : 401;
+    return NextResponse.json({ error: msg }, { status });
   }
 }

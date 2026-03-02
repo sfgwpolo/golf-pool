@@ -1,21 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../../../lib/prisma";
 import { fetchPgaTourLeaderboard } from "../../../../../../lib/providers/pgaTourLeaderboard";
-
-function assertAdmin(req: Request) {
-  const token = req.headers.get("x-admin-token");
-  if (!process.env.ADMIN_TOKEN || token !== process.env.ADMIN_TOKEN) {
-    throw new Error("Unauthorized");
-  }
-}
+import { requireOrgAdminForPool } from "../../../../../../lib/adminAuth";
 
 export async function POST(
   req: Request,
   context: { params: Promise<{ poolId: string }> }
 ) {
   try {
-    assertAdmin(req);
     const { poolId } = await context.params;
+
+    await requireOrgAdminForPool(req, poolId);
 
     const pool = await prisma.pool.findUnique({ where: { id: poolId } });
     if (!pool) return NextResponse.json({ error: "Pool not found" }, { status: 404 });
@@ -42,12 +37,9 @@ export async function POST(
   } catch (e: any) {
     console.error("refresh-snapshot error:", e);
 
-    const msg = e?.message ?? "Error";
-    const status = msg === "Unauthorized" ? 401 : 500;
-
-    return NextResponse.json(
-      { error: msg, detail: String(e) },
-      { status }
-    );
+    const msg = String(e?.message || "Unauthorized");
+    const status =
+      msg === "Forbidden" ? 403 : msg === "Pool not found" ? 404 : 401;
+    return NextResponse.json({ error: msg }, { status });
   }
 }
