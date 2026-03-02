@@ -1,33 +1,37 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../../../lib/prisma";
-
-function assertAdmin(req: Request) {
-  const token = req.headers.get("x-admin-token");
-  if (!process.env.ADMIN_TOKEN || token !== process.env.ADMIN_TOKEN) {
-    throw new Error("Unauthorized");
-  }
-}
+import { requireOrgAdminForPool } from "../../../../../../lib/adminAuth";
 
 export async function PATCH(
   req: Request,
-  ctx: { params: Promise<{ poolId: string }> }
+  ctx: { params: Promise<{ poolId: string }> },
 ) {
-    assertAdmin(req);
+  try {
+    const { poolId } = await ctx.params;
 
-  const { poolId } = await ctx.params;
+    await requireOrgAdminForPool(req, poolId);
 
-  const body = await req.json().catch(() => null);
-  const locked = body?.locked;
+    const body = await req.json().catch(() => null);
+    const locked = body?.locked;
 
-  if (typeof locked !== "boolean") {
-    return NextResponse.json({ error: "Missing locked boolean" }, { status: 400 });
+    if (typeof locked !== "boolean") {
+      return NextResponse.json(
+        { error: "Missing locked boolean" },
+        { status: 400 },
+      );
+    }
+
+    const pool = await prisma.pool.update({
+      where: { id: poolId },
+      data: { locked },
+      select: { id: true, locked: true },
+    });
+
+    return NextResponse.json({ pool });
+  } catch (e: any) {
+    const msg = String(e?.message || "Unauthorized");
+    const status =
+      msg === "Forbidden" ? 403 : msg === "Pool not found" ? 404 : 401;
+    return NextResponse.json({ error: msg }, { status });
   }
-
-  const pool = await prisma.pool.update({
-    where: { id: poolId },
-    data: { locked },
-    select: { id: true, locked: true },
-  });
-
-  return NextResponse.json({ pool });
 }
