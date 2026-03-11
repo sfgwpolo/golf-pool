@@ -7,12 +7,14 @@ export async function GET(
   context: { params: Promise<{ poolId: string }> }
 ) {
   try {
-
     const { poolId } = await context.params;
 
     await requireOrgAdminForPool(req, poolId);
 
     const pool = await prisma.pool.findUnique({ where: { id: poolId } });
+    if (!pool) {
+      return NextResponse.json({ error: "Pool not found" }, { status: 404 });
+    }
 
     const entries = await prisma.entry.findMany({
       where: { poolId },
@@ -31,10 +33,9 @@ export async function GET(
       entries,
       now: new Date().toISOString(),
     });
-  } catch (e: any) {
-    const msg = String(e?.message || "Unauthorized");
-    const status =
-      msg === "Forbidden" ? 403 : msg === "Pool not found" ? 404 : 401;
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Unauthorized";
+    const status = msg === "Forbidden" ? 403 : 401;
     return NextResponse.json({ error: msg }, { status });
   }
 }

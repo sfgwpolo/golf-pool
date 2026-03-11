@@ -26,8 +26,8 @@ export async function GET(req: Request) {
       me,
       organizations: memberships.map((m) => m.organization),
     });
-  } catch (e: any) {
-    const msg = String(e?.message || "Unauthorized");
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Unauthorized";
     return NextResponse.json({ error: msg }, { status: 401 });
   }
 }

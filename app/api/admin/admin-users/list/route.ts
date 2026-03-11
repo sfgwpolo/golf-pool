@@ -15,8 +15,8 @@ export async function GET(req: Request) {
     });
 
     return NextResponse.json({ adminUsers: admins });
-  } catch (e: any) {
-    const msg = String(e?.message || "Unauthorized");
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Unauthorized";
     const status = msg === "Forbidden" ? 403 : 401;
     return NextResponse.json({ error: msg }, { status });
   }
