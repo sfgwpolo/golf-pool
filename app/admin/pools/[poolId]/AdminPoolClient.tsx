@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 type EntryPick = {
   id: string;
@@ -32,8 +32,20 @@ type PoolInfo = {
   locked: boolean;
 };
 
+type AdminEntriesResponse = {
+  pool: PoolInfo;
+  entries: EntryRow[];
+  now: string;
+};
+
+type PurgeInfo = {
+  allowed: boolean;
+  startsAt: string;
+  locked: boolean;
+  unpaidCount: number;
+};
+
 export default function AdminPoolClient({ poolId }: { poolId: string }) {
-  const [adminToken, setAdminToken] = useState<string>("");
   const [pool, setPool] = useState<PoolInfo | null>(null);
   const [entries, setEntries] = useState<EntryRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -42,41 +54,60 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
   const [resetCode, setResetCode] = useState("");
   const [resetMsg, setResetMsg] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
-
-
-  const now = useMemo(() => new Date(), []);
+  const [purgeInfo, setPurgeInfo] = useState<PurgeInfo | null>(null);
 
   useEffect(() => {
-    const stored = sessionStorage.getItem("ADMIN_TOKEN") || "";
-    setAdminToken(stored);
-  }, []);
+    fetchEntries();
+    loadPurgeInfo();
+  }, [poolId]);
 
-  async function fetchEntries(token: string) {
+  function getErrorMessageFromJson(data: unknown): string | null {
+    if (!data || typeof data !== "object") return null;
+    const maybe = data as Record<string, unknown>;
+    return typeof maybe.error === "string" ? maybe.error : null;
+  }
+
+  async function fetchEntries() {
     setErr("");
     setLoading(true);
+
     try {
       const res = await fetch(`/api/admin/pools/${poolId}/entries`, {
-        headers: { "x-admin-token": token },
         cache: "no-store",
       });
 
       const text = await res.text();
-      let data: any = null;
-      try { data = JSON.parse(text); } catch {}
-      if (!res.ok) throw new Error(data?.error || text || "Failed to load entries");
 
-      setPool(data.pool);
-      setEntries(data.entries);
-    } catch (e: any) {
-      setErr(e?.message ?? "Error");
+      let data: unknown = null;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        // If it's not JSON (e.g., HTML 404), we'll handle below
+      }
+
+      if (!res.ok) {
+        throw new Error(
+          getErrorMessageFromJson(data) || text || "Failed to load entries",
+        );
+      }
+
+      // Validate-ish: ensure it's an object with pool/entries
+      if (!data || typeof data !== "object") {
+        throw new Error("Unexpected response (not JSON object)");
+      }
+
+      const obj = data as AdminEntriesResponse;
+      if (!obj.pool?.id || !Array.isArray(obj.entries)) {
+        throw new Error("Unexpected response shape from server");
+      }
+
+      setPool(obj.pool);
+      setEntries(obj.entries);
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Error");
     } finally {
       setLoading(false);
     }
-  }
-
-  async function saveTokenAndLoad() {
-    sessionStorage.setItem("ADMIN_TOKEN", adminToken);
-    await fetchEntries(adminToken);
   }
 
   async function togglePaid(entryId: string, isPaid: boolean) {
@@ -86,22 +117,30 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "x-admin-token": adminToken,
         },
         body: JSON.stringify(
           isPaid
             ? { isPaid: true, paidAmount: 25, paidMethod: "Venmo" } // change defaults anytime
-            : { isPaid: false }
+            : { isPaid: false },
         ),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to update payment");
+      const text = await res.text();
 
+      let data: unknown = null;
+      try {
+        data = JSON.parse(text);
+      } catch {}
+
+      if (!res.ok) {
+        throw new Error(
+          getErrorMessageFromJson(data) || text || "Failed to update payment",
+        );
+      }
       // refresh list
-      await fetchEntries(adminToken);
-    } catch (e: any) {
-      setErr(e?.message ?? "Error");
+      await fetchEntries();
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Error");
     }
   }
 
@@ -110,69 +149,133 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
     try {
       const res = await fetch(`/api/admin/pools/${poolId}/refresh-snapshot`, {
         method: "POST",
-        headers: { "x-admin-token": adminToken },
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to refresh snapshot");
-      alert(`Snapshot saved (${data.count} golfers).`);
-    } catch (e: any) {
-      setErr(e?.message ?? "Error");
+      const text = await res.text();
+
+      let data: unknown = null;
+      try {
+        data = JSON.parse(text);
+      } catch {}
+
+      if (!res.ok) {
+        throw new Error(
+          getErrorMessageFromJson(data) || text || "Failed to refresh snapshot",
+        );
+      }
+
+      const count =
+        data && typeof data === "object" && "count" in data
+          ? Number((data as Record<string, unknown>).count)
+          : "?";
+
+      alert(`Snapshot saved (${count} golfers).`);
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Error");
     }
   }
 
   async function purgeUnpaid() {
     setErr("");
     try {
+      const ok = window.confirm(
+        "Purge unpaid entries? (This will soft-delete them.)",
+      );
+      if (!ok) return;
+
       const res = await fetch(`/api/admin/pools/${poolId}/purge-unpaid`, {
         method: "POST",
-        headers: { "x-admin-token": adminToken },
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: true }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to purge unpaid");
 
-      alert(`Purged ${data.purged} unpaid entries.`);
-      await fetchEntries(adminToken);
-    } catch (e: any) {
-      setErr(e?.message ?? "Error");
+      const text = await res.text();
+      let data: unknown = null;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        // ignore
+      }
+
+      if (!res.ok) {
+        const msg =
+          data && typeof data === "object" && "error" in data
+            ? String((data as Record<string, unknown>).error)
+            : text || "Failed to purge unpaid";
+        throw new Error(msg);
+      }
+
+      const purged =
+        data && typeof data === "object" && "purged" in data
+          ? Number((data as Record<string, unknown>).purged)
+          : NaN;
+
+      alert(`Purged ${Number.isFinite(purged) ? purged : "?"} unpaid entries.`);
+      await fetchEntries(); // reload entries
+      await loadPurgeInfo();
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Error");
     }
   }
 
-async function resetPasscode() {
-  setResetMsg("");
-  setResetLoading(true);
+  async function loadPurgeInfo() {
+    try {
+      const res = await fetch(`/api/admin/pools/${poolId}/purge-unpaid-info`, {
+        cache: "no-store",
+      });
 
-  try {
-    const res = await fetch(`/api/admin/pools/${poolId}/passcodes/reset`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "x-admin-token": adminToken, // rename if yours differs
-      },
-      body: JSON.stringify({
-        email: resetEmail.trim(),
-        newPasscode: resetCode,
-      }),
-    });
+      const text = await res.text();
+      let data: unknown = null;
+      try {
+        data = JSON.parse(text);
+      } catch {}
 
-    const text = await res.text();
-    const data = text ? JSON.parse(text) : null;
+      if (!res.ok) {
+        setPurgeInfo(null);
+        return;
+      }
 
-    if (!res.ok)
-      throw new Error(data?.error || `Request failed (${res.status})`);
-
-    setResetMsg("Code word reset successfully.");
-    setResetCode("");
-    // optionally keep email for repeated resets:
-    // setResetEmail("");
-  } catch (e: any) {
-    setResetMsg(e?.message || "Error resetting code word");
-  } finally {
-    setResetLoading(false);
+      const obj = data as PurgeInfo;
+      setPurgeInfo(obj);
+    } catch {
+      setPurgeInfo(null);
+    }
   }
-}
 
-  const entriesCloseAt = pool ? new Date(pool.entriesCloseAt) : null;
-  const canPurge = entriesCloseAt ? now >= entriesCloseAt || (pool && pool.locked) : false;
+  async function resetPasscode() {
+    setResetMsg("");
+    setResetLoading(true);
+
+    try {
+      const res = await fetch(`/api/admin/pools/${poolId}/passcodes/reset`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: resetEmail.trim(),
+          newPasscode: resetCode,
+        }),
+      });
+
+      const text = await res.text();
+      const data = text ? JSON.parse(text) : null;
+
+      if (!res.ok)
+        throw new Error(data?.error || `Request failed (${res.status})`);
+
+      setResetMsg("Code word reset successfully.");
+      setResetCode("");
+      // optionally keep email for repeated resets:
+      // setResetEmail("");
+    } catch (e: unknown) {
+      setResetMsg(e instanceof Error ? e.message : "Error resetting code word");
+    } finally {
+      setResetLoading(false);
+    }
+  }
+
+  const canPurge =
+    !!purgeInfo && purgeInfo.allowed && purgeInfo.unpaidCount > 0;
 
   return (
     <div style={{ padding: 16, fontFamily: "system-ui, sans-serif" }}>
@@ -189,9 +292,6 @@ async function resetPasscode() {
           borderRadius: 8,
         }}
       >
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>
-          Admin Token (prototype)
-        </div>
         <div
           style={{
             display: "flex",
@@ -200,30 +300,11 @@ async function resetPasscode() {
             flexWrap: "wrap",
           }}
         >
-          <input
-            value={adminToken}
-            onChange={(e) => setAdminToken(e.target.value)}
-            placeholder="Paste ADMIN_TOKEN from .env"
-            style={{
-              minWidth: 320,
-              padding: 8,
-              border: "1px solid #ccc",
-              borderRadius: 6,
-            }}
-          />
           <button
-            onClick={saveTokenAndLoad}
-            style={{
-              padding: "8px 12px",
-              border: "1px solid #ccc",
-              borderRadius: 6,
-              cursor: "pointer",
+            onClick={async () => {
+              await fetchEntries();
+              await loadPurgeInfo();
             }}
-          >
-            Load entries
-          </button>
-          <button
-            onClick={() => fetchEntries(adminToken)}
             style={{
               padding: "8px 12px",
               border: "1px solid #ccc",
@@ -233,6 +314,7 @@ async function resetPasscode() {
           >
             Refresh
           </button>
+
           <button
             onClick={refreshSnapshot}
             style={{
@@ -244,78 +326,105 @@ async function resetPasscode() {
           >
             Refresh Snapshot
           </button>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <button
+              onClick={purgeUnpaid}
+              disabled={!canPurge}
+              title={
+                !purgeInfo
+                  ? "Loading…"
+                  : !purgeInfo.allowed
+                    ? `Disabled until tournament starts (${new Date(purgeInfo.startsAt).toLocaleString()}) or the pool is manually locked`
+                    : purgeInfo.unpaidCount === 0
+                      ? "No unpaid entries to remove"
+                      : "Soft-delete unpaid entries"
+              }
+              style={{
+                padding: "8px 12px",
+                border: "1px solid #ccc",
+                borderRadius: 6,
+                cursor: canPurge ? "pointer" : "not-allowed",
+                opacity: canPurge ? 1 : 0.5,
+                width: "fit-content",
+              }}
+            >
+              Purge unpaid{" "}
+              <span style={{ opacity: 0.8 }}>
+                ({purgeInfo ? purgeInfo.unpaidCount : "…"})
+              </span>
+            </button>
+
+            {purgeInfo && (
+              <div style={{ fontSize: 12, opacity: 0.75 }}>
+                Eligible when tournament starts (
+                {new Date(purgeInfo.startsAt).toLocaleString()})
+                {purgeInfo.locked ? " • pool is locked" : ""}
+              </div>
+            )}
+          </div>
+        </div>
+        <div
+          style={{
+            marginTop: 16,
+            padding: 12,
+            border: "1px solid #ddd",
+            borderRadius: 8,
+          }}
+        >
+          <div style={{ fontSize: 16, fontWeight: 700 }}>
+            Reset user code word
+          </div>
+          <div style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>
+            Resets the per-pool code word for an email address. The old code
+            word will stop working.
+          </div>
+
+          <input
+            value={resetEmail}
+            onChange={(e) => setResetEmail(e.target.value)}
+            placeholder="User email (e.g., joyce@test.com)"
+            style={{ width: "100%", padding: 8, marginTop: 10 }}
+          />
+
+          <input
+            value={resetCode}
+            onChange={(e) => setResetCode(e.target.value)}
+            placeholder="New code word (4–50 characters)"
+            style={{ width: "100%", padding: 8, marginTop: 8 }}
+          />
+
           <button
-            onClick={purgeUnpaid}
-            disabled={!canPurge}
-            title={
-              !canPurge
-                ? "Disabled until entriesCloseAt"
-                : "Soft-delete unpaid entries"
+            onClick={resetPasscode}
+            disabled={
+              resetLoading || !resetEmail.trim() || resetCode.trim().length < 4
             }
             style={{
+              marginTop: 10,
               padding: "8px 12px",
-              border: "1px solid #ccc",
-              borderRadius: 6,
-              cursor: canPurge ? "pointer" : "not-allowed",
-              opacity: canPurge ? 1 : 0.5,
+              cursor:
+                resetLoading ||
+                !resetEmail.trim() ||
+                resetCode.trim().length < 4
+                  ? "not-allowed"
+                  : "pointer",
+              opacity:
+                resetLoading ||
+                !resetEmail.trim() ||
+                resetCode.trim().length < 4
+                  ? 0.5
+                  : 1,
             }}
           >
-            Purge unpaid (after lock)
+            {resetLoading ? "Resetting…" : "Reset code word"}
           </button>
+
+          {resetMsg && (
+            <div style={{ marginTop: 8, fontSize: 13 }}>
+              <strong>{resetMsg}</strong>
+            </div>
+          )}
         </div>
-
-<div
-  style={{
-    marginTop: 16,
-    padding: 12,
-    border: "1px solid #ddd",
-    borderRadius: 8,
-  }}
->
-  <div style={{ fontSize: 16, fontWeight: 700 }}>Reset user code word</div>
-  <div style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>
-    Resets the per-pool code word for an email address. The old code word will stop working.
-  </div>
-
-  <input
-    value={resetEmail}
-    onChange={(e) => setResetEmail(e.target.value)}
-    placeholder="User email (e.g., joyce@test.com)"
-    style={{ width: "100%", padding: 8, marginTop: 10 }}
-  />
-
-  <input
-    value={resetCode}
-    onChange={(e) => setResetCode(e.target.value)}
-    placeholder="New code word (4–50 characters)"
-    style={{ width: "100%", padding: 8, marginTop: 8 }}
-  />
-
-  <button
-    onClick={resetPasscode}
-    disabled={resetLoading || !resetEmail.trim() || resetCode.trim().length < 4}
-    style={{
-      marginTop: 10,
-      padding: "8px 12px",
-      cursor:
-        resetLoading || !resetEmail.trim() || resetCode.trim().length < 4
-          ? "not-allowed"
-          : "pointer",
-      opacity:
-        resetLoading || !resetEmail.trim() || resetCode.trim().length < 4
-          ? 0.5
-          : 1,
-    }}
-  >
-    {resetLoading ? "Resetting…" : "Reset code word"}
-  </button>
-
-  {resetMsg && (
-    <div style={{ marginTop: 8, fontSize: 13 }}>
-      <strong>{resetMsg}</strong>
-    </div>
-  )}
-</div>
 
         {pool && (
           <div style={{ marginTop: 10, fontSize: 14, opacity: 0.9 }}>
@@ -335,7 +444,6 @@ async function resetPasscode() {
                     method: "PATCH",
                     headers: {
                       "Content-Type": "application/json",
-                      "x-admin-token": adminToken,
                     },
                     body: JSON.stringify({ locked: e.target.checked }),
                   });
@@ -348,7 +456,8 @@ async function resetPasscode() {
                     );
 
                   // refresh UI
-                  await fetchEntries(adminToken);
+                  await fetchEntries();
+                  await loadPurgeInfo();
                 }}
               />
               Manually lock pool (stop edits/entries)
@@ -467,5 +576,3 @@ async function resetPasscode() {
     </div>
   );
 }
-
-

@@ -21,8 +21,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ orgId: string }
     });
 
     return NextResponse.json({ pools });
-  } catch (e: any) {
-    const msg = String(e?.message || "Unauthorized");
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Unauthorized";
     const status = msg === "Forbidden" ? 403 : 401;
     return NextResponse.json({ error: msg }, { status });
   }

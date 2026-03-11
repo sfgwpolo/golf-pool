@@ -31,8 +31,8 @@ export async function GET(req: Request) {
         admins: o.admins.map((a) => a.admin),
       })),
     });
-  } catch (e: any) {
-    const msg = String(e?.message || "Unauthorized");
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Unauthorized";
     const status = msg === "Forbidden" ? 403 : 401;
     return NextResponse.json({ error: msg }, { status });
   }

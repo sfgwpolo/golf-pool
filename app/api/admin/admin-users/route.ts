@@ -33,8 +33,8 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ adminUser: created });
-  } catch (e: any) {
-    const msg = String(e?.message || "Unauthorized");
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Unauthorized";
     // Prisma unique constraint -> already exists
     const status = msg.includes("Unique constraint") ? 409 : msg === "Forbidden" ? 403 : 401;
     return NextResponse.json({ error: msg }, { status });

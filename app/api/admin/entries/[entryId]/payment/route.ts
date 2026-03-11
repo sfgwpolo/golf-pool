@@ -1,40 +1,44 @@
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../../..//lib/prisma";
-import { requireOrgAdminForPool } from "..//../../../../../lib/adminAuth";
+import { prisma } from "../../../../../../lib/prisma";
+import { requireOrgAdminForPool } from "../../../../../../lib/adminAuth";
 
 export async function PATCH(
   req: Request,
-  ctx: { params: Promise<{ entryId: string }> },
+  context: { params: Promise<{ entryId: string }> }
 ) {
   try {
-    await requireOrgAdminForPool(req, poolId);
+    const { entryId } = await context.params;
 
-    const { entryId } = await ctx.params;
-
+    // Parse body
     const body = await req.json().catch(() => null);
-    const isPaid = body?.isPaid;
-
-    if (typeof isPaid !== "boolean") {
-      return NextResponse.json(
-        { error: "Missing isPaid boolean" },
-        { status: 400 },
-      );
+    if (!body || typeof body.isPaid !== "boolean") {
+      return NextResponse.json({ error: "isPaid boolean required" }, { status: 400 });
     }
 
-    const entry = await prisma.entry.update({
+    // Find entry -> poolId
+    const entry = await prisma.entry.findUnique({
       where: { id: entryId },
-      data: {
-        isPaid,
-        paidAt: isPaid ? new Date() : null,
-      },
+      select: { id: true, poolId: true, isPaid: true },
+    });
+    if (!entry) return NextResponse.json({ error: "Entry not found" }, { status: 404 });
+
+    // RBAC based on entry.poolId
+    await requireOrgAdminForPool(req, entry.poolId);
+
+    const now = new Date();
+
+    const updated = await prisma.entry.update({
+      where: { id: entryId },
+      data: body.isPaid
+        ? { isPaid: true, paidAt: now }
+        : { isPaid: false, paidAt: null },
       select: { id: true, isPaid: true, paidAt: true },
     });
 
-    return NextResponse.json({ entry });
-  } catch (e: any) {
-    const msg = String(e?.message || "Unauthorized");
-    const status =
-      msg === "Forbidden" ? 403 : msg === "Pool not found" ? 404 : 401;
+    return NextResponse.json({ entry: updated });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Unauthorized";
+    const status = msg === "Forbidden" ? 403 : 401;
     return NextResponse.json({ error: msg }, { status });
   }
 }

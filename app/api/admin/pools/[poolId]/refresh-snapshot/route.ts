@@ -34,10 +34,10 @@ export async function POST(
       snapshot: { id: snapshot.id, fetchedAt: snapshot.fetchedAt, source: snapshot.source },
       count: leaderboard.length,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("refresh-snapshot error:", e);
 
-    const msg = String(e?.message || "Unauthorized");
+    const msg = e instanceof Error ? e.message : "Unauthorized";
     const status =
       msg === "Forbidden" ? 403 : msg === "Pool not found" ? 404 : 401;
     return NextResponse.json({ error: msg }, { status });

@@ -19,8 +19,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ orgId: string 
     });
 
     return NextResponse.json({ ok: true, id: row.id });
-  } catch (e: any) {
-    const msg = String(e?.message || "Unauthorized");
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Unauthorized";
     const status =
       msg.includes("Unique constraint") ? 409 : msg === "Forbidden" ? 403 : msg === "Organization" ? 404 : 401;
     return NextResponse.json({ error: msg }, { status });
@@ -43,8 +43,8 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ orgId: strin
     });
 
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    const msg = String(e?.message || "Unauthorized");
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Unauthorized";
     const status = msg === "Forbidden" ? 403 : 401;
     return NextResponse.json({ error: msg }, { status });
   }

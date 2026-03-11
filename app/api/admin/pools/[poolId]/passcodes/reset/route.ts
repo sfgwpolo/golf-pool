@@ -42,8 +42,8 @@ export async function PATCH(
 
     return NextResponse.json({ ok: true, record });
     
-  } catch (e: any) {
-    const msg = String(e?.message || "Unauthorized");
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Unauthorized";
     const status =
       msg === "Forbidden" ? 403 : msg === "Pool not found" ? 404 : 401;
     return NextResponse.json({ error: msg }, { status });
