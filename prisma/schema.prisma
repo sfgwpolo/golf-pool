@@ -61,6 +61,7 @@ model Organization {
   slug  String @unique
   description String?
   emblemUrl   String?
+  displayOrder Int     @default(0)
 
   pools   Pool[]
   admins  OrgAdmin[]
@@ -81,6 +82,7 @@ model Pool {
   entryCost       Decimal? @db.Decimal(10, 2)
   payoutText      String?
   isArchived      Boolean  @default(false)
+  endedAt         DateTime?
 
   organization   Organization     @relation(fields: [orgId], references: [id])
   entries        Entry[]

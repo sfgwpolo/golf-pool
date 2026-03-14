@@ -30,6 +30,11 @@ type PoolInfo = {
   startsAt: string;
   entriesCloseAt: string;
   locked: boolean;
+  rulesText?: string | null;
+  entryCost?: string | null;
+  payoutText?: string | null;
+  endedAt?: string | null;
+  isArchived?: boolean;
 };
 
 type AdminEntriesResponse = {
@@ -55,6 +60,13 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
   const [resetMsg, setResetMsg] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
   const [purgeInfo, setPurgeInfo] = useState<PurgeInfo | null>(null);
+  const [rulesText, setRulesText] = useState("");
+  const [entryCost, setEntryCost] = useState("");
+  const [payoutText, setPayoutText] = useState("");
+  const [endedAt, setEndedAt] = useState("");
+  const [isArchived, setIsArchived] = useState(false);
+  const [detailsMsg, setDetailsMsg] = useState("");
+  const [detailsLoading, setDetailsLoading] = useState(false);
 
   useEffect(() => {
     fetchEntries();
@@ -102,11 +114,96 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
       }
 
       setPool(obj.pool);
+      setRulesText(obj.pool.rulesText || "");
+      setRulesText(
+        (
+          obj.pool as PoolInfo & {
+            rulesText?: string | null;
+            entryCost?: string | null;
+            payoutText?: string | null;
+            endedAt?: string | null;
+            isArchived?: boolean;
+          }
+        ).rulesText ?? "",
+      );
+
+      setEntryCost(
+        (
+          obj.pool as PoolInfo & {
+            entryCost?: string | null;
+          }
+        ).entryCost ?? "",
+      );
+
+      setPayoutText(
+        (
+          obj.pool as PoolInfo & {
+            payoutText?: string | null;
+          }
+        ).payoutText ?? "",
+      );
+
+      setEndedAt(
+        (
+          obj.pool as PoolInfo & {
+            endedAt?: string | null;
+          }
+        ).endedAt
+          ? new Date(
+              (obj.pool as PoolInfo & { endedAt?: string | null })
+                .endedAt as string,
+            )
+              .toISOString()
+              .slice(0, 16)
+          : "",
+      );
+
+      setIsArchived(
+        Boolean((obj.pool as PoolInfo & { isArchived?: boolean }).isArchived),
+      );
       setEntries(obj.entries);
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Error");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function savePoolDetails() {
+    setDetailsMsg("");
+    setDetailsLoading(true);
+
+    try {
+      const res = await fetch(`/api/admin/pools/${poolId}/details`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          rulesText,
+          entryCost,
+          payoutText,
+          endedAt: endedAt || null,
+          isArchived,
+        }),
+      });
+
+      const text = await res.text();
+      const data = text ? JSON.parse(text) : null;
+
+      if (!res.ok) {
+        throw new Error(data?.error || `Request failed (${res.status})`);
+      }
+
+      setDetailsMsg("Pool display details saved.");
+      await fetchEntries();
+      await loadPurgeInfo();
+    } catch (e: unknown) {
+      setDetailsMsg(
+        e instanceof Error ? e.message : "Error saving pool details",
+      );
+    } finally {
+      setDetailsLoading(false);
     }
   }
 
@@ -464,7 +561,87 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
             </label>
           </div>
         )}
+        <div
+          style={{
+            marginTop: 16,
+            padding: 12,
+            border: "1px solid #ddd",
+            borderRadius: 8,
+          }}
+        >
+          <div style={{ fontSize: 16, fontWeight: 700 }}>
+            Pool display details
+          </div>
 
+          <textarea
+            value={rulesText}
+            onChange={(e) => setRulesText(e.target.value)}
+            placeholder="Rules text"
+            rows={5}
+            style={{ width: "100%", padding: 8, marginTop: 10 }}
+          />
+
+          <input
+            value={entryCost}
+            onChange={(e) => setEntryCost(e.target.value)}
+            placeholder="Entry cost (e.g. 25)"
+            style={{ width: "100%", padding: 8, marginTop: 8 }}
+          />
+
+          <input
+            value={payoutText}
+            onChange={(e) => setPayoutText(e.target.value)}
+            placeholder="Payout text (e.g. 1st: 50%, 2nd: 30%, 3rd: 20%)"
+            style={{ width: "100%", padding: 8, marginTop: 8 }}
+          />
+
+          <div style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>
+            Ended at (optional)
+          </div>
+          <input
+            type="datetime-local"
+            value={endedAt}
+            onChange={(e) => setEndedAt(e.target.value)}
+            style={{ width: "100%", padding: 8, marginTop: 4 }}
+          />
+
+          <label
+            style={{
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              marginTop: 10,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={isArchived}
+              onChange={(e) => setIsArchived(e.target.checked)}
+            />
+            Archive this pool
+          </label>
+
+          <button
+            onClick={savePoolDetails}
+            disabled={detailsLoading}
+            style={{
+              marginTop: 10,
+              padding: "8px 12px",
+              border: "1px solid #ccc",
+              borderRadius: 6,
+              cursor: detailsLoading ? "not-allowed" : "pointer",
+              opacity: detailsLoading ? 0.5 : 1,
+            }}
+          >
+            {detailsLoading ? "Saving..." : "Save pool details"}
+          </button>
+
+          {detailsMsg && (
+            <div style={{ marginTop: 8, fontSize: 13 }}>
+              <strong>{detailsMsg}</strong>
+            </div>
+          )}
+        </div>
         {err && (
           <div style={{ marginTop: 10, color: "crimson" }}>
             <strong>Error:</strong> {err}

@@ -6,11 +6,18 @@ type Org = {
   id: string;
   name: string;
   slug: string;
+  description?: string | null;
+  emblemUrl?: string | null;
   admins: { id: string; email: string; role: string }[];
 };
 
 export default function OrganizationsClient() {
   const [orgs, setOrgs] = useState<Org[]>([]);
+  const [orgDescription, setOrgDescription] = useState<Record<string, string>>(
+    {},
+  );
+  const [orgEmblemUrl, setOrgEmblemUrl] = useState<Record<string, string>>({});
+  const [orgMsg, setOrgMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [adminUsers, setAdminUsers] = useState<
@@ -49,9 +56,19 @@ export default function OrganizationsClient() {
         throw new Error(adminData?.error || "Failed to load admin users");
 
       setOrgs(orgData.organizations || []);
+      const descMap: Record<string, string> = {};
+      const emblemMap: Record<string, string> = {};
+
+      for (const o of orgData.organizations || []) {
+        descMap[o.id] = o.description ?? "";
+        emblemMap[o.id] = o.emblemUrl ?? "";
+      }
+
+      setOrgDescription(descMap);
+      setOrgEmblemUrl(emblemMap);
       setAdminUsers(adminData.adminUsers || []);
-    } catch (e: any) {
-      setMsg(e?.message || "Error");
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "Error");
     } finally {
       setLoading(false);
     }
@@ -60,6 +77,28 @@ export default function OrganizationsClient() {
   useEffect(() => {
     load();
   }, []);
+
+  async function saveOrgDetails(orgId: string) {
+    setOrgMsg("");
+    try {
+      const res = await fetch(`/api/admin/organizations/${orgId}/details`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description: orgDescription[orgId] ?? "",
+          emblemUrl: orgEmblemUrl[orgId] ?? "",
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to save org details");
+
+      setOrgMsg("Organization details saved.");
+      await load();
+    } catch (e: unknown) {
+      setOrgMsg(e instanceof Error ? e.message : "Error");
+    }
+  }
 
   async function createAdmin() {
     setMsg("");
@@ -79,8 +118,8 @@ export default function OrganizationsClient() {
       setNewEmail("");
       setNewPw("");
       await load();
-    } catch (e: any) {
-      setMsg(e?.message || "Error");
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "Error");
     }
   }
 
@@ -99,8 +138,8 @@ export default function OrganizationsClient() {
       if (!res.ok) throw new Error(data?.error || "Assign failed");
       setMsg("Assigned admin to org.");
       await load();
-    } catch (e: any) {
-      setMsg(e?.message || "Error");
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "Error");
     }
   }
 
@@ -117,14 +156,10 @@ export default function OrganizationsClient() {
       if (!res.ok) throw new Error(data?.error || "Unassign failed");
       setMsg("Removed admin from org.");
       await load();
-    } catch (e: any) {
-      setMsg(e?.message || "Error");
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "Error");
     }
   }
-
-  const allAdmins = Array.from(
-    new Map(orgs.flatMap((o) => o.admins).map((a) => [a.id, a])).values(),
-  );
 
   return (
     <div
@@ -183,7 +218,9 @@ export default function OrganizationsClient() {
         />
         <select
           value={newRole}
-          onChange={(e) => setNewRole(e.target.value as any)}
+          onChange={(e) =>
+            setNewRole(e.target.value as "ORG_ADMIN" | "SUPER_ADMIN")
+          }
           style={{ width: "100%", padding: 8, marginTop: 8 }}
         >
           <option value="ORG_ADMIN">ORG_ADMIN</option>
@@ -286,6 +323,48 @@ export default function OrganizationsClient() {
                 ))}
               </ul>
             )}
+
+            <div
+              style={{
+                marginTop: 10,
+                paddingTop: 10,
+                borderTop: "1px solid #eee",
+              }}
+            >
+              <div style={{ fontWeight: 700 }}>Public landing page details</div>
+
+              <input
+                value={orgEmblemUrl[o.id] ?? ""}
+                onChange={(e) =>
+                  setOrgEmblemUrl((prev) => ({
+                    ...prev,
+                    [o.id]: e.target.value,
+                  }))
+                }
+                placeholder="Emblem URL"
+                style={{ width: "100%", padding: 8, marginTop: 8 }}
+              />
+
+              <textarea
+                value={orgDescription[o.id] ?? ""}
+                onChange={(e) =>
+                  setOrgDescription((prev) => ({
+                    ...prev,
+                    [o.id]: e.target.value,
+                  }))
+                }
+                placeholder="Organization description"
+                rows={3}
+                style={{ width: "100%", padding: 8, marginTop: 8 }}
+              />
+
+              <button
+                onClick={() => saveOrgDetails(o.id)}
+                style={{ marginTop: 8, padding: "8px 12px" }}
+              >
+                Save org details
+              </button>
+            </div>
           </div>
         ))}
       </div>

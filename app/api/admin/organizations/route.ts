@@ -13,6 +13,8 @@ export async function GET(req: Request) {
       orderBy: { name: "asc" },
       select: {
         id: true,
+        description: true,
+        emblemUrl: true,
         name: true,
         slug: true,
         admins: {
@@ -26,6 +28,8 @@ export async function GET(req: Request) {
     return NextResponse.json({
       organizations: orgs.map((o) => ({
         id: o.id,
+        description: o.description,
+        emblemUrl: o.emblemUrl,
         name: o.name,
         slug: o.slug,
         admins: o.admins.map((a) => a.admin),
