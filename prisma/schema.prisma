@@ -59,6 +59,9 @@ model Organization {
   id    String @id @default(cuid())
   name  String
   slug  String @unique
+  description String?
+  emblemUrl   String?
+  displayOrder Int     @default(0)
 
   pools   Pool[]
   admins  OrgAdmin[]
@@ -74,6 +77,12 @@ model Pool {
   entriesCloseAt DateTime
   locked         Boolean  @default(false)
   weightsJson    Json     @default("{\"1\":10,\"2\":9,\"3\":8,\"4\":7,\"5\":6,\"6\":5,\"7\":4,\"8\":3,\"9\":2,\"10\":1}")
+
+  rulesText       String?
+  entryCost       Decimal? @db.Decimal(10, 2)
+  payoutText      String?
+  isArchived      Boolean  @default(false)
+  endedAt         DateTime?
 
   organization   Organization     @relation(fields: [orgId], references: [id])
   entries        Entry[]
