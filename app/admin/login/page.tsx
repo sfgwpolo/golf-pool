@@ -33,8 +33,9 @@ export default function AdminLoginPage() {
 
       router.push(next);
       router.refresh();
-    } catch (e: any) {
-      setMsg(e?.message || "Login failed");
+    } catch (e: unknown) {
+      const errorMsg = typeof e === "object" && e !== null && "message" in e ? (e as { message?: string }).message : undefined;
+      setMsg(errorMsg || "Login failed");
     } finally {
       setLoading(false);
     }

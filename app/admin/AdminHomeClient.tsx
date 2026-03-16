@@ -54,40 +54,18 @@ export default function AdminHomeClient() {
     }
   }
 
-  async function logout() {
-    setMsg("");
-    try {
-      await fetch("/api/admin/auth/logout", { method: "POST" });
-      router.push("/admin/login");
-      router.refresh();
-    } catch {
-      router.push("/admin/login");
-      router.refresh();
-    }
-  }
-
   useEffect(() => {
     load();
   }, []);
 
   return (
-    <div style={{ padding: 20, fontFamily: "system-ui, sans-serif", maxWidth: 900 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800 }}>Admin</h1>
-          {me && (
-            <div style={{ marginTop: 4, opacity: 0.8, fontSize: 13 }}>
-              Signed in as <strong>{me.email}</strong> ({me.role})
-            </div>
-          )}
-        </div>
+    <div style={{ maxWidth: 900 }}>
+      <h1 style={{ fontSize: 24, fontWeight: 800 }}>Admin Home</h1>
 
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <button onClick={load} disabled={loading} style={{ padding: "8px 12px" }}>
             {loading ? "Refreshing…" : "Refresh"}
-          </button>
-          <button onClick={logout} style={{ padding: "8px 12px" }}>
-            Logout
           </button>
         </div>
       </div>
@@ -99,11 +77,6 @@ export default function AdminHomeClient() {
       )}
 
       <div style={{ marginTop: 16 }}>
-        {me?.role === "SUPER_ADMIN" && (
-          <div style={{ marginBottom: 12 }}>
-            <a href="/admin/organizations">Organizations & Admins</a>
-          </div>
-        )}
 
         {orgs.length === 0 ? (
           <div style={{ opacity: 0.7 }}>No organizations available.</div>

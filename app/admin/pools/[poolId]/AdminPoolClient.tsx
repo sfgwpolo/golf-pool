@@ -375,7 +375,7 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
     !!purgeInfo && purgeInfo.allowed && purgeInfo.unpaidCount > 0;
 
   return (
-    <div style={{ padding: 16, fontFamily: "system-ui, sans-serif" }}>
+    <div style={{ marginTop: 12 }}>
       <h1 style={{ fontSize: 24, fontWeight: 700 }}>Admin: Pool</h1>
       <div style={{ marginTop: 8, opacity: 0.8 }}>
         Pool ID: <code>{poolId}</code>

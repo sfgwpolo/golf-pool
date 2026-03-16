@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { fetchJson } from "../../../lib/http";
 
 type Org = {
   id: string;
@@ -9,6 +10,42 @@ type Org = {
   description?: string | null;
   emblemUrl?: string | null;
   admins: { id: string; email: string; role: string }[];
+};
+
+type AdminUser = {
+  id: string;
+  email: string;
+  role: string;
+};
+
+type OrganizationsResponse = {
+  organizations: Org[];
+};
+
+type AdminUsersResponse = {
+  adminUsers: AdminUser[];
+};
+
+type SaveOrgDetailsResponse = {
+  organization: {
+    id: string;
+    name: string;
+    slug: string;
+    description: string | null;
+    emblemUrl: string | null;
+  };
+};
+
+type CreateAdminResponse = {
+  adminUser: {
+    id: string;
+    email: string;
+    role: string;
+  };
+};
+
+type SimpleOkResponse = {
+  ok: true;
 };
 
 export default function OrganizationsClient() {
@@ -20,18 +57,14 @@ export default function OrganizationsClient() {
   const [orgMsg, setOrgMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
-  const [adminUsers, setAdminUsers] = useState<
-    { id: string; email: string; role: string }[]
-  >([]);
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
 
-  // Create admin form
   const [newEmail, setNewEmail] = useState("");
   const [newPw, setNewPw] = useState("");
   const [newRole, setNewRole] = useState<"ORG_ADMIN" | "SUPER_ADMIN">(
     "ORG_ADMIN",
   );
 
-  // Assign form
   const [assignOrgId, setAssignOrgId] = useState("");
   const [assignAdminId, setAssignAdminId] = useState("");
 
@@ -39,23 +72,17 @@ export default function OrganizationsClient() {
     setMsg("");
     setLoading(true);
     try {
-      const [orgRes, adminRes] = await Promise.all([
-        fetch("/api/admin/organizations", { cache: "no-store" }),
-        fetch("/api/admin/admin-users/list", { cache: "no-store" }),
+      const [orgData, adminData] = await Promise.all([
+        fetchJson<OrganizationsResponse>("/api/admin/organizations", {
+          cache: "no-store",
+        }),
+        fetchJson<AdminUsersResponse>("/api/admin/admin-users/list", {
+          cache: "no-store",
+        }),
       ]);
 
-      const orgText = await orgRes.text();
-      const orgData = orgText ? JSON.parse(orgText) : null;
-
-      const adminText = await adminRes.text();
-      const adminData = adminText ? JSON.parse(adminText) : null;
-
-      if (!orgRes.ok)
-        throw new Error(orgData?.error || "Failed to load organizations");
-      if (!adminRes.ok)
-        throw new Error(adminData?.error || "Failed to load admin users");
-
       setOrgs(orgData.organizations || []);
+
       const descMap: Record<string, string> = {};
       const emblemMap: Record<string, string> = {};
 
@@ -81,17 +108,17 @@ export default function OrganizationsClient() {
   async function saveOrgDetails(orgId: string) {
     setOrgMsg("");
     try {
-      const res = await fetch(`/api/admin/organizations/${orgId}/details`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          description: orgDescription[orgId] ?? "",
-          emblemUrl: orgEmblemUrl[orgId] ?? "",
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to save org details");
+      await fetchJson<SaveOrgDetailsResponse>(
+        `/api/admin/organizations/${orgId}/details`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            description: orgDescription[orgId] ?? "",
+            emblemUrl: orgEmblemUrl[orgId] ?? "",
+          }),
+        },
+      );
 
       setOrgMsg("Organization details saved.");
       await load();
@@ -103,7 +130,7 @@ export default function OrganizationsClient() {
   async function createAdmin() {
     setMsg("");
     try {
-      const res = await fetch("/api/admin/admin-users", {
+      const data = await fetchJson<CreateAdminResponse>("/api/admin/admin-users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -112,8 +139,7 @@ export default function OrganizationsClient() {
           role: newRole,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Create admin failed");
+
       setMsg(`Created admin: ${data.adminUser.email}`);
       setNewEmail("");
       setNewPw("");
@@ -126,7 +152,7 @@ export default function OrganizationsClient() {
   async function assignAdmin() {
     setMsg("");
     try {
-      const res = await fetch(
+      await fetchJson<SimpleOkResponse>(
         `/api/admin/organizations/${assignOrgId}/admins`,
         {
           method: "POST",
@@ -134,8 +160,7 @@ export default function OrganizationsClient() {
           body: JSON.stringify({ adminId: assignAdminId }),
         },
       );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Assign failed");
+
       setMsg("Assigned admin to org.");
       await load();
     } catch (e: unknown) {
@@ -146,14 +171,13 @@ export default function OrganizationsClient() {
   async function unassign(orgId: string, adminId: string) {
     setMsg("");
     try {
-      const res = await fetch(
+      await fetchJson<SimpleOkResponse>(
         `/api/admin/organizations/${orgId}/admins?adminId=${adminId}`,
         {
           method: "DELETE",
         },
       );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Unassign failed");
+
       setMsg("Removed admin from org.");
       await load();
     } catch (e: unknown) {
@@ -163,11 +187,7 @@ export default function OrganizationsClient() {
 
   return (
     <div
-      style={{
-        padding: 20,
-        fontFamily: "system-ui, sans-serif",
-        maxWidth: 900,
-      }}
+      style={{ maxWidth: 900 }}
     >
       <h1 style={{ fontSize: 24, fontWeight: 800 }}>Organizations & Admins</h1>
 
@@ -193,7 +213,6 @@ export default function OrganizationsClient() {
         )}
       </div>
 
-      {/* Create admin */}
       <div
         style={{
           marginTop: 16,
@@ -235,7 +254,6 @@ export default function OrganizationsClient() {
         </button>
       </div>
 
-      {/* Assign */}
       <div
         style={{
           marginTop: 16,
@@ -283,12 +301,10 @@ export default function OrganizationsClient() {
         </button>
 
         <div style={{ marginTop: 10, fontSize: 13, opacity: 0.8 }}>
-          Note: The dropdown shows admins already assigned somewhere. Next we’ll
-          add a full admin list endpoint.
+          Select an admin user and assign them to an organization.
         </div>
       </div>
 
-      {/* Orgs list */}
       <div style={{ marginTop: 18 }}>
         {orgs.map((o) => (
           <div
