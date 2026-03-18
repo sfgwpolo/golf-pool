@@ -9,6 +9,7 @@ type Org = {
   slug: string;
   description?: string | null;
   emblemUrl?: string | null;
+  isArchived: boolean;
   admins: { id: string; email: string; role: string }[];
 };
 
@@ -67,6 +68,58 @@ export default function OrganizationsClient() {
 
   const [assignOrgId, setAssignOrgId] = useState("");
   const [assignAdminId, setAssignAdminId] = useState("");
+
+  const [newOrgName, setNewOrgName] = useState("");
+  const [newOrgSlug, setNewOrgSlug] = useState("");
+  const [newOrgDescription, setNewOrgDescription] = useState("");
+  const [newOrgEmblemUrl, setNewOrgEmblemUrl] = useState("");
+
+  async function createOrganization() {
+    setMsg("");
+    try {
+      await fetchJson<{ organization: Org }>(
+        "/api/admin/organizations/create",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: newOrgName,
+            slug: newOrgSlug,
+            description: newOrgDescription,
+            emblemUrl: newOrgEmblemUrl,
+          }),
+        },
+      );
+
+      setMsg("Organization created.");
+      setNewOrgName("");
+      setNewOrgSlug("");
+      setNewOrgDescription("");
+      setNewOrgEmblemUrl("");
+      await load();
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "Error");
+    }
+  }
+
+  async function toggleArchiveOrg(orgId: string, isArchived: boolean) {
+    setMsg("");
+    try {
+      await fetchJson<{ organization: Org }>(
+        `/api/admin/organizations/${orgId}/archive`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isArchived }),
+        },
+      );
+
+      setMsg(isArchived ? "Organization archived." : "Organization restored.");
+      await load();
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "Error");
+    }
+  }
 
   async function load() {
     setMsg("");
@@ -130,15 +183,18 @@ export default function OrganizationsClient() {
   async function createAdmin() {
     setMsg("");
     try {
-      const data = await fetchJson<CreateAdminResponse>("/api/admin/admin-users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: newEmail,
-          password: newPw,
-          role: newRole,
-        }),
-      });
+      const data = await fetchJson<CreateAdminResponse>(
+        "/api/admin/admin-users",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: newEmail,
+            password: newPw,
+            role: newRole,
+          }),
+        },
+      );
 
       setMsg(`Created admin: ${data.adminUser.email}`);
       setNewEmail("");
@@ -186,9 +242,7 @@ export default function OrganizationsClient() {
   }
 
   return (
-    <div
-      style={{ maxWidth: 900 }}
-    >
+    <div style={{ maxWidth: 900 }}>
       <h1 style={{ fontSize: 24, fontWeight: 800 }}>Organizations & Admins</h1>
 
       <div
@@ -211,6 +265,54 @@ export default function OrganizationsClient() {
             <strong>{msg}</strong>
           </div>
         )}
+      </div>
+
+      <div
+        style={{
+          marginTop: 16,
+          padding: 12,
+          border: "1px solid #ddd",
+          borderRadius: 8,
+        }}
+      >
+        <div style={{ fontSize: 16, fontWeight: 700 }}>Create organization</div>
+
+        <input
+          value={newOrgName}
+          onChange={(e) => setNewOrgName(e.target.value)}
+          placeholder="Organization name"
+          style={{ width: "100%", padding: 8, marginTop: 10 }}
+        />
+
+        <input
+          value={newOrgSlug}
+          onChange={(e) => setNewOrgSlug(e.target.value)}
+          placeholder="Slug (e.g. joyce-demo)"
+          style={{ width: "100%", padding: 8, marginTop: 8 }}
+        />
+
+        <input
+          value={newOrgEmblemUrl}
+          onChange={(e) => setNewOrgEmblemUrl(e.target.value)}
+          placeholder="Emblem URL"
+          style={{ width: "100%", padding: 8, marginTop: 8 }}
+        />
+
+        <textarea
+          value={newOrgDescription}
+          onChange={(e) => setNewOrgDescription(e.target.value)}
+          placeholder="Organization description"
+          rows={3}
+          style={{ width: "100%", padding: 8, marginTop: 8 }}
+        />
+
+        <button
+          onClick={createOrganization}
+          disabled={!newOrgName.trim() || !newOrgSlug.trim()}
+          style={{ marginTop: 10, padding: "8px 12px" }}
+        >
+          Create organization
+        </button>
       </div>
 
       <div
@@ -320,6 +422,22 @@ export default function OrganizationsClient() {
               {o.name}{" "}
               <span style={{ opacity: 0.6, fontSize: 13 }}>({o.slug})</span>
             </div>
+
+            <label
+              style={{
+                display: "flex",
+                gap: 8,
+                alignItems: "center",
+                marginTop: 10,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={Boolean(o.isArchived)}
+                onChange={(e) => toggleArchiveOrg(o.id, e.target.checked)}
+              />
+              Archive organization
+            </label>
 
             <div style={{ marginTop: 8, fontWeight: 700 }}>Admins</div>
             {o.admins.length === 0 ? (

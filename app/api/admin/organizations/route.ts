@@ -15,6 +15,7 @@ export async function GET(req: Request) {
         id: true,
         description: true,
         emblemUrl: true,
+        isArchived: true,
         name: true,
         slug: true,
         admins: {
@@ -30,6 +31,7 @@ export async function GET(req: Request) {
         id: o.id,
         description: o.description,
         emblemUrl: o.emblemUrl,
+        isArchived: o.isArchived,
         name: o.name,
         slug: o.slug,
         admins: o.admins.map((a) => a.admin),
