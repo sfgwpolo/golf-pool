@@ -62,6 +62,7 @@ model Organization {
   description String?
   emblemUrl   String?
   displayOrder Int     @default(0)
+  isArchived Boolean @default(false)
 
   pools   Pool[]
   admins  OrgAdmin[]
