@@ -186,7 +186,7 @@ export default function LeaderboardClient({ poolId }: { poolId: string }) {
 
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: 12, opacity: 0.7 }}>
-                    Score (placeholder)
+                    Score
                   </div>
                   <div style={{ fontSize: 20, fontWeight: 800 }}>{r.score}</div>
                 </div>

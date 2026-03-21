@@ -44,7 +44,7 @@ export async function GET(
     },
   });
 
-  if (!org) {
+  if (!org || org.isArchived) {
     return NextResponse.json(
       { error: "Organization not found" },
       { status: 404 }

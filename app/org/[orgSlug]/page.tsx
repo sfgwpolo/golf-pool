@@ -1,3 +1,4 @@
+import PublicHeader from "../../PublicHeader";
 import OrgLandingClient from "./OrgLandingClient";
 
 export default async function OrgPage({
@@ -6,5 +7,11 @@ export default async function OrgPage({
   params: Promise<{ orgSlug: string }>;
 }) {
   const { orgSlug } = await params;
-  return <OrgLandingClient orgSlug={orgSlug} />;
+
+  return (
+    <div style={{ padding: 20, fontFamily: "system-ui, sans-serif" }}>
+      <PublicHeader backHref="/" backLabel="All Organizations" />
+      <OrgLandingClient orgSlug={orgSlug} />
+    </div>
+  );
 }

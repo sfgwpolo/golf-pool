@@ -1,14 +1,25 @@
 import zlib from "node:zlib";
 
 export type LeaderboardPlayer = {
-  golferId: string;     // normalized name (matches your manual entry ids)
+  golferId: string; // normalized name (matches your manual entry ids)
   golferName: string;
   position: number;
-  earnings: number;     // if not present in payload, 0 (we can later switch to strokes)
+  earnings: number; // if not present in payload, 0 (we can later switch to strokes)
 };
 
+function firstDefined<T>(...values: T[]): T | undefined {
+  for (const v of values) {
+    if (v !== undefined && v !== null && v !== "") return v;
+  }
+  return undefined;
+}
+
 function normalizeId(name: string) {
-  return name.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9\-]/g, "");
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9\-]/g, "");
 }
 
 function decodePayloadToJson(payload: string): any {
@@ -32,24 +43,26 @@ function decodePayloadToJson(payload: string): any {
 }
 
 function findPlayers(decoded: any): any[] {
-  // Best-effort: PGA may change shape; these cover common layouts.
   return (
     decoded?.leaderboard?.players ??
     decoded?.leaderboard?.rows ??
+    decoded?.leaderboard?.playerStandings ??
     decoded?.players ??
     decoded?.rows ??
+    decoded?.playerStandings ??
     decoded?.data?.leaderboard?.players ??
     decoded?.data?.leaderboard?.rows ??
+    decoded?.data?.leaderboard?.playerStandings ??
     []
   );
 }
 
-function parsePosition(v: any): number {
+function parsePosition(v: unknown): number {
   const n = Number(String(v ?? "").replace(/[^\d]/g, ""));
   return Number.isFinite(n) && n > 0 ? n : 9999;
 }
 
-function parseMoney(v: any): number {
+function parseMoney(v: unknown): number {
   if (typeof v === "number") return v;
   const n = Number(String(v ?? "").replace(/[^0-9.\-]/g, ""));
   return Number.isFinite(n) ? n : 0;
@@ -59,16 +72,19 @@ function parseMoney(v: any): number {
  * Fetch PGA leaderboard via orchestrator LeaderboardCompressedV3 query.
  * Works on your network because it avoids statdata/microservice domains.
  */
-export async function fetchPgaTourLeaderboard(leaderboardCompressedV3Id: string): Promise<LeaderboardPlayer[]> {
+export async function fetchPgaTourLeaderboard(
+  leaderboardCompressedV3Id: string,
+): Promise<LeaderboardPlayer[]> {
   const url = process.env.PGA_ORCH_URL;
   const apiKey = process.env.PGA_ORCH_API_KEY;
-  if (!url || !apiKey) throw new Error("Missing PGA_ORCH_URL or PGA_ORCH_API_KEY in .env");
+  if (!url || !apiKey)
+    throw new Error("Missing PGA_ORCH_URL or PGA_ORCH_API_KEY in .env");
 
   const body = {
     operationName: "LeaderboardCompressedV3",
     variables: { leaderboardCompressedV3Id },
     query:
-      'query LeaderboardCompressedV3($leaderboardCompressedV3Id: ID!) { leaderboardCompressedV3(id: $leaderboardCompressedV3Id) { id payload } }',
+      "query LeaderboardCompressedV3($leaderboardCompressedV3Id: ID!) { leaderboardCompressedV3(id: $leaderboardCompressedV3Id) { id payload } }",
   };
 
   const res = await fetch(url, {
@@ -88,10 +104,14 @@ export async function fetchPgaTourLeaderboard(leaderboardCompressedV3Id: string)
 
   const text = await res.text();
   let json: any = null;
-  try { json = JSON.parse(text); } catch {}
+  try {
+    json = JSON.parse(text);
+  } catch {}
 
-  if (!res.ok) throw new Error(`Orchestrator HTTP ${res.status}: ${text.slice(0, 400)}`);
-  if (json?.errors?.length) throw new Error(`GraphQL error: ${json.errors[0]?.message ?? "Unknown"}`);
+  if (!res.ok)
+    throw new Error(`Orchestrator HTTP ${res.status}: ${text.slice(0, 400)}`);
+  if (json?.errors?.length)
+    throw new Error(`GraphQL error: ${json.errors[0]?.message ?? "Unknown"}`);
 
   const payload = json?.data?.leaderboardCompressedV3?.payload;
   if (!payload || typeof payload !== "string" || payload.length === 0) {
@@ -105,33 +125,67 @@ export async function fetchPgaTourLeaderboard(leaderboardCompressedV3Id: string)
   if (!Array.isArray(players) || players.length === 0) {
     // This tells us how the payload is shaped if it changed
     const topKeys = Object.keys(decoded ?? {});
-    throw new Error(`Decoded payload but players array not found. Top keys: ${topKeys.join(", ")}`);
+    throw new Error(
+      `Decoded payload but players array not found. Top keys: ${topKeys.join(", ")}`,
+    );
   }
 
   // Map to your app’s format
-  return players
+  const mapped = players
     .map((p: any) => {
       const name =
-        p?.playerName ??
-        p?.player?.displayName ??
-        p?.player?.name ??
-        p?.name ??
-        [p?.player?.firstName, p?.player?.lastName].filter(Boolean).join(" ") ??
-        "";
+        firstDefined(
+          p?.playerName,
+          p?.player?.displayName,
+          p?.player?.name,
+          p?.name,
+          [p?.player?.firstName, p?.player?.lastName].filter(Boolean).join(" "),
+        ) ?? "";
 
       if (!name) return null;
 
-      const position = parsePosition(p?.position ?? p?.currentPosition ?? p?.rank ?? p?.pos);
+      const position = parsePosition(
+        firstDefined(
+          p?.position,
+          p?.currentPosition,
+          p?.rank,
+          p?.pos,
+          p?.place,
+          p?.positionDisplay,
+          p?.displayPosition,
+          p?.status?.position,
+          p?.playerStanding?.position,
+          p?.playerStanding?.displayPosition,
+          p?.scoringData?.position,
+        ),
+      );
 
-      // “earnings” might not exist. If not, we’ll compute by position later (or use strokes).
-      const earnings = parseMoney(p?.earnings ?? p?.money ?? p?.officialMoney ?? 0);
+      const earnings = parseMoney(
+        firstDefined(
+          p?.earnings,
+          p?.money,
+          p?.officialMoney,
+          p?.projectedEarnings,
+          p?.prizeMoney,
+          p?.purse,
+          p?.scoringData?.earnings,
+          p?.scoringData?.money,
+        ) ?? 0,
+      );
 
       return {
-        golferId: normalizeId(name),   // IMPORTANT: matches your manual-entry golferId
+        golferId: normalizeId(name),
         golferName: name,
         position,
         earnings,
       };
     })
     .filter(Boolean) as LeaderboardPlayer[];
+
+  const usablePositions = mapped.filter((p) => p.position !== 9999).length;
+  if (mapped.length > 0 && usablePositions === 0) {
+    console.warn("PGA provider parsed players but found no usable positions.");
+  }
+
+  return mapped;
 }
