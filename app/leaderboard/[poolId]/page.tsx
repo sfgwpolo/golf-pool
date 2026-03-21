@@ -1,3 +1,4 @@
+import PublicHeader from "../../PublicHeader";
 import LeaderboardClient from "./LeaderboardClient";
 
 export default async function LeaderboardPage({
@@ -6,5 +7,10 @@ export default async function LeaderboardPage({
   params: Promise<{ poolId: string }>;
 }) {
   const { poolId } = await params;
-  return <LeaderboardClient poolId={poolId} />;
+  return (
+    <div style={{ padding: 20, fontFamily: "system-ui, sans-serif" }}>
+      <PublicHeader backHref="/" backLabel="All Organizations" />
+      <LeaderboardClient poolId={poolId} />
+    </div>
+  );
 }

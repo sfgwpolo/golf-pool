@@ -5,8 +5,36 @@ type LeaderboardPlayer = {
   golferId: string;
   golferName: string;
   position: number;
-  earnings: number;
 };
+
+function pointsForPosition(position: number) {
+  if (!Number.isFinite(position) || position <= 0 || position >= 9999) return 0;
+
+  // simple descending points model
+  if (position === 1) return 100;
+  if (position === 2) return 90;
+  if (position === 3) return 80;
+  if (position === 4) return 70;
+  if (position === 5) return 60;
+  if (position === 6) return 50;
+  if (position === 7) return 40;
+  if (position === 8) return 30;
+  if (position === 9) return 20;
+  if (position === 10) return 10;
+
+  return 0;
+}
+
+function normalizeName(s: string) {
+  return s
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 export async function GET(
   _req: Request,
@@ -23,15 +51,27 @@ export async function GET(
     orderBy: { fetchedAt: "desc" },
   });
 
-  const leaderboardPlayers: LeaderboardPlayer[] =
-    (latest?.rawJson as any)?.leaderboard ?? [];
+  const raw = latest?.rawJson as Record<string, unknown> | null | undefined;
 
-  // Map golferId -> earnings (placeholder scoring input)
-  const earningsByGolferId = new Map<string, number>();
-  for (const p of leaderboardPlayers)
-    earningsByGolferId.set(p.golferId, p.earnings ?? 0);
+  const leaderboardPlayers: LeaderboardPlayer[] = Array.isArray(
+    raw?.leaderboard,
+  )
+    ? (raw.leaderboard as LeaderboardPlayer[])
+    : [];
 
-  const weights = (pool.weightsJson as any) ?? {};
+  const pointsByGolferId = new Map<string, number>();
+  const pointsByGolferName = new Map<string, number>();
+
+  for (const p of leaderboardPlayers) {
+    const points = pointsForPosition(Number(p.position));
+    pointsByGolferId.set(String(p.golferId), points);
+    pointsByGolferName.set(normalizeName(p.golferName), points);
+  }
+  
+  const weights =
+    pool.weightsJson && typeof pool.weightsJson === "object"
+      ? (pool.weightsJson as Record<string, number>)
+      : {};
   const weightForRank = (rank: number) => Number(weights[String(rank)] ?? 0);
 
   const entries = await prisma.entry.findMany({
@@ -52,8 +92,12 @@ export async function GET(
   const scored = entries.map((e) => {
     let score = 0;
     for (const pick of e.picks) {
-      const earnings = earningsByGolferId.get(pick.golferId) ?? 0;
-      score += earnings * weightForRank(pick.rank);
+      const points =
+        pointsByGolferId.get(String(pick.golferId)) ??
+        pointsByGolferName.get(normalizeName(pick.golferName)) ??
+        0;
+
+      score += points * weightForRank(pick.rank);
     }
     return { ...e, score };
   });
