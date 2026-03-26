@@ -67,7 +67,7 @@ export async function GET(
     pointsByGolferId.set(String(p.golferId), points);
     pointsByGolferName.set(normalizeName(p.golferName), points);
   }
-  
+
   const weights =
     pool.weightsJson && typeof pool.weightsJson === "object"
       ? (pool.weightsJson as Record<string, number>)
@@ -91,15 +91,31 @@ export async function GET(
 
   const scored = entries.map((e) => {
     let score = 0;
-    for (const pick of e.picks) {
+
+    const picksWithPoints = e.picks.map((pick) => {
       const points =
         pointsByGolferId.get(String(pick.golferId)) ??
         pointsByGolferName.get(normalizeName(pick.golferName)) ??
         0;
 
-      score += points * weightForRank(pick.rank);
-    }
-    return { ...e, score };
+      const weight = weightForRank(pick.rank);
+      const total = points * weight;
+
+      score += total;
+
+      return {
+        ...pick,
+        positionPoints: points,
+        weight,
+        totalPoints: total,
+      };
+    });
+
+    return {
+      ...e,
+      score,
+      picks: picksWithPoints,
+    };
   });
 
   // Sort by score desc, then paid desc, then name

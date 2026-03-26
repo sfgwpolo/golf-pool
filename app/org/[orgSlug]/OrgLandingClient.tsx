@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getPoolStatus } from "../../../lib/poolStatus";
 
 type Org = {
   id: string;
@@ -33,8 +34,16 @@ type OrgResponse = {
   pastPools: Pool[];
 };
 
-function PoolCard({ pool, featured = false }: { pool: Pool; featured?: boolean }) {
-  const isOpen = !pool.locked && new Date() < new Date(pool.entriesCloseAt);
+function PoolCard({
+  pool,
+  orgSlug,
+  featured = false,
+}: {
+  pool: Pool;
+  orgSlug: string;
+  featured?: boolean;
+}) {
+  const status = getPoolStatus(pool);
 
   return (
     <div
@@ -46,7 +55,14 @@ function PoolCard({ pool, featured = false }: { pool: Pool; featured?: boolean }
         background: featured ? "#fafafa" : "white",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
         <div>
           <div style={{ fontSize: featured ? 22 : 18, fontWeight: 800 }}>
             {pool.year} — {pool.name}
@@ -99,22 +115,21 @@ function PoolCard({ pool, featured = false }: { pool: Pool; featured?: boolean }
       {pool.rulesText && (
         <div style={{ marginTop: 8 }}>
           <strong>Rules:</strong>
-          <div style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>{pool.rulesText}</div>
+          <div style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>
+            {pool.rulesText}
+          </div>
         </div>
       )}
 
       <div style={{ marginTop: 10, fontSize: 13, opacity: 0.8 }}>
-        Entry status:{" "}
-        {isOpen ? (
-          <span style={{ color: "green", fontWeight: 700 }}>Open</span>
-        ) : (
-          <span style={{ color: "#999" }}>Closed</span>
-        )}
+        Status: <strong>{status}</strong>
       </div>
 
-      <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+      <div
+        style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}
+      >
         <a
-          href={`/pool/${pool.id}`}
+          href={`/pool/${pool.id}?org=${orgSlug}`}
           style={{
             padding: "8px 12px",
             border: "1px solid #ccc",
@@ -127,7 +142,7 @@ function PoolCard({ pool, featured = false }: { pool: Pool; featured?: boolean }
         </a>
 
         <a
-          href={`/leaderboard/${pool.id}`}
+          href={`/leaderboard/${pool.id}?org=${orgSlug}`}
           style={{
             padding: "8px 12px",
             border: "1px solid #ccc",
@@ -184,11 +199,25 @@ export default function OrgLandingClient({ orgSlug }: { orgSlug: string }) {
     );
   }
 
-  const { organization, defaultPool, activePools, upcomingPools, pastPools } = data;
+  const { organization, defaultPool, activePools, upcomingPools, pastPools } =
+    data;
 
   return (
-    <div style={{ padding: 20, fontFamily: "system-ui, sans-serif", maxWidth: 960 }}>
-      <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+    <div
+      style={{
+        padding: 20,
+        fontFamily: "system-ui, sans-serif",
+        maxWidth: 960,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          gap: 16,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
         {organization.emblemUrl ? (
           <img
             src={organization.emblemUrl}
@@ -206,9 +235,13 @@ export default function OrgLandingClient({ orgSlug }: { orgSlug: string }) {
         ) : null}
 
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{organization.name}</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>
+            {organization.name}
+          </h1>
           {organization.description && (
-            <div style={{ marginTop: 6, opacity: 0.8 }}>{organization.description}</div>
+            <div style={{ marginTop: 6, opacity: 0.8 }}>
+              {organization.description}
+            </div>
           )}
         </div>
       </div>
@@ -216,7 +249,7 @@ export default function OrgLandingClient({ orgSlug }: { orgSlug: string }) {
       {defaultPool && (
         <div style={{ marginTop: 24 }}>
           <div style={{ fontSize: 20, fontWeight: 800 }}>Featured Pool</div>
-          <PoolCard pool={defaultPool} featured />
+          <PoolCard pool={defaultPool} orgSlug={organization.slug} featured />
         </div>
       )}
 
@@ -224,7 +257,7 @@ export default function OrgLandingClient({ orgSlug }: { orgSlug: string }) {
         <div style={{ marginTop: 28 }}>
           <div style={{ fontSize: 20, fontWeight: 800 }}>Active Pools</div>
           {activePools.map((pool) => (
-            <PoolCard key={pool.id} pool={pool} />
+            <PoolCard key={pool.id} pool={pool} orgSlug={organization.slug} />
           ))}
         </div>
       )}
@@ -233,7 +266,7 @@ export default function OrgLandingClient({ orgSlug }: { orgSlug: string }) {
         <div style={{ marginTop: 28 }}>
           <div style={{ fontSize: 20, fontWeight: 800 }}>Upcoming Pools</div>
           {upcomingPools.map((pool) => (
-            <PoolCard key={pool.id} pool={pool} />
+            <PoolCard key={pool.id} pool={pool} orgSlug={organization.slug} />
           ))}
         </div>
       )}
@@ -242,14 +275,19 @@ export default function OrgLandingClient({ orgSlug }: { orgSlug: string }) {
         <div style={{ marginTop: 28 }}>
           <div style={{ fontSize: 20, fontWeight: 800 }}>Past Pools</div>
           {pastPools.map((pool) => (
-            <PoolCard key={pool.id} pool={pool} />
+            <PoolCard key={pool.id} pool={pool} orgSlug={organization.slug} />
           ))}
         </div>
       )}
 
-      {!defaultPool && activePools.length === 0 && upcomingPools.length === 0 && pastPools.length === 0 && (
-        <div style={{ marginTop: 24, opacity: 0.75 }}>No pools available yet.</div>
-      )}
+      {!defaultPool &&
+        activePools.length === 0 &&
+        upcomingPools.length === 0 &&
+        pastPools.length === 0 && (
+          <div style={{ marginTop: 24, opacity: 0.75 }}>
+            No pools available yet.
+          </div>
+        )}
     </div>
   );
 }

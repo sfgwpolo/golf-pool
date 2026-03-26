@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getPoolStatus } from "../../../lib/poolStatus";
 
 type Pick = {
   id: string;
   rank: number;
   golferId: string;
   golferName: string;
+  positionPoints: number;
+  weight: number;
+  totalPoints: number;
 };
 
 type Row = {
@@ -15,7 +19,7 @@ type Row = {
   isPaid: boolean;
   createdAt: string;
   picks: Pick[];
-  score: number; // placeholder for now
+  score: number;
 };
 
 type PoolInfo = {
@@ -24,6 +28,8 @@ type PoolInfo = {
   entriesCloseAt: string;
   startsAt: string;
   locked: boolean;
+  endedAt: string | null;
+  isArchived: boolean;
 };
 
 export default function LeaderboardClient({ poolId }: { poolId: string }) {
@@ -32,6 +38,7 @@ export default function LeaderboardClient({ poolId }: { poolId: string }) {
   const [generatedAt, setGeneratedAt] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   async function load() {
     setErr("");
@@ -45,16 +52,17 @@ export default function LeaderboardClient({ poolId }: { poolId: string }) {
       const text = await res.text();
       const data = text ? JSON.parse(text) : null;
 
-      if (!res.ok)
+      if (!res.ok) {
         throw new Error(
           data?.error || `Failed to load leaderboard (${res.status})`,
         );
+      }
 
       setPool(data.pool);
       setRows(data.leaderboard);
-      setGeneratedAt(data.generatedAt);
-    } catch (e: any) {
-      setErr(e?.message ?? "Error");
+      setGeneratedAt(data.generatedAt || data.snapshot?.fetchedAt || "");
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Error");
     } finally {
       setLoading(false);
     }
@@ -87,6 +95,20 @@ export default function LeaderboardClient({ poolId }: { poolId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poolId]);
 
+  function medalForIndex(idx: number) {
+    if (idx === 0) return "🥇";
+    if (idx === 1) return "🥈";
+    if (idx === 2) return "🥉";
+    return "";
+  }
+
+  function backgroundForIndex(idx: number) {
+    if (idx === 0) return "#fff8dc";
+    if (idx === 1) return "#f5f5f5";
+    if (idx === 2) return "#fdf2e9";
+    return "white";
+  }
+
   return (
     <div
       style={{
@@ -110,6 +132,11 @@ export default function LeaderboardClient({ poolId }: { poolId: string }) {
         </div>
       )}
 
+{pool && (
+  <div style={{ marginTop: 6, opacity: 0.8 }}>
+    Status: {getPoolStatus(pool)}
+  </div>
+)}
       <div
         style={{
           marginTop: 10,
@@ -128,7 +155,8 @@ export default function LeaderboardClient({ poolId }: { poolId: string }) {
 
         {generatedAt && (
           <div style={{ fontSize: 13, opacity: 0.7 }}>
-            (auto every 60s) {new Date(generatedAt).toLocaleTimeString()}
+            Last updated: {new Date(generatedAt).toLocaleTimeString()} (auto every
+            60s)
           </div>
         )}
       </div>
@@ -143,64 +171,194 @@ export default function LeaderboardClient({ poolId }: { poolId: string }) {
         {rows.length === 0 ? (
           <div style={{ opacity: 0.7 }}>No entries yet.</div>
         ) : (
-          rows.map((r, idx) => (
-            <div
-              key={r.id}
-              style={{
-                marginTop: 12,
-                padding: 12,
-                border: "1px solid #ddd",
-                borderRadius: 8,
-              }}
-            >
+          rows.map((r, idx) => {
+            const isExpanded = !!expanded[r.id];
+
+            return (
               <div
+                key={r.id}
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 12,
+                  marginTop: 12,
+                  padding: 12,
+                  border: "1px solid #ddd",
+                  borderRadius: 8,
+                  background: backgroundForIndex(idx),
                 }}
               >
-                <div>
-                  <div style={{ fontSize: 18, fontWeight: 700 }}>
-                    {idx + 1}. {r.entryName}{" "}
-                    {r.isPaid ? (
-                      <span
-                        style={{
-                          marginLeft: 8,
-                          color: "green",
-                          fontWeight: 600,
-                        }}
-                      >
-                        ✓ Paid
-                      </span>
-                    ) : (
-                      <span style={{ marginLeft: 8, color: "#999" }}>
-                        Unpaid
-                      </span>
-                    )}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    alignItems: "flex-start",
+                    cursor: "pointer",
+                  }}
+                  onClick={() =>
+                    setExpanded((prev) => ({ ...prev, [r.id]: !prev[r.id] }))
+                  }
+                >
+                  <div>
+                    <div style={{ fontSize: 18, fontWeight: 700 }}>
+                      {medalForIndex(idx)} {idx + 1}. {r.entryName}{" "}
+                      {r.isPaid ? (
+                        <span
+                          style={{
+                            marginLeft: 8,
+                            color: "green",
+                            fontWeight: 600,
+                          }}
+                        >
+                          ✓ Paid
+                        </span>
+                      ) : (
+                        <span style={{ marginLeft: 8, color: "#999" }}>
+                          Unpaid
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 12, opacity: 0.7 }}>
+                      Submitted: {new Date(r.createdAt).toLocaleString()}
+                    </div>
+                    <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
+                      Click to {isExpanded ? "collapse" : "expand"} pick details
+                    </div>
                   </div>
-                  <div style={{ fontSize: 12, opacity: 0.7 }}>
-                    Submitted: {new Date(r.createdAt).toLocaleString()}
+
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 12, opacity: 0.7 }}>Score</div>
+                    <div style={{ fontSize: 20, fontWeight: 800 }}>{r.score}</div>
                   </div>
                 </div>
 
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: 12, opacity: 0.7 }}>
-                    Score
+                {isExpanded ? (
+                  <div
+                    style={{
+                      marginTop: 12,
+                      padding: 10,
+                      background: "rgba(255,255,255,0.65)",
+                      borderRadius: 8,
+                    }}
+                  >
+                    <table
+                      style={{
+                        width: "100%",
+                        borderCollapse: "collapse",
+                        fontSize: 14,
+                      }}
+                    >
+                      <thead>
+                        <tr>
+                          <th
+                            style={{
+                              textAlign: "left",
+                              padding: "6px 8px",
+                              borderBottom: "1px solid #ddd",
+                            }}
+                          >
+                            Rank
+                          </th>
+                          <th
+                            style={{
+                              textAlign: "left",
+                              padding: "6px 8px",
+                              borderBottom: "1px solid #ddd",
+                            }}
+                          >
+                            Golfer
+                          </th>
+                          <th
+                            style={{
+                              textAlign: "right",
+                              padding: "6px 8px",
+                              borderBottom: "1px solid #ddd",
+                            }}
+                          >
+                            Position Pts
+                          </th>
+                          <th
+                            style={{
+                              textAlign: "right",
+                              padding: "6px 8px",
+                              borderBottom: "1px solid #ddd",
+                            }}
+                          >
+                            Weight
+                          </th>
+                          <th
+                            style={{
+                              textAlign: "right",
+                              padding: "6px 8px",
+                              borderBottom: "1px solid #ddd",
+                            }}
+                          >
+                            Total
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {r.picks.map((p) => (
+                          <tr key={p.id}>
+                            <td
+                              style={{
+                                padding: "6px 8px",
+                                borderBottom: "1px solid #eee",
+                              }}
+                            >
+                              {p.rank}
+                            </td>
+                            <td
+                              style={{
+                                padding: "6px 8px",
+                                borderBottom: "1px solid #eee",
+                              }}
+                            >
+                              {p.golferName}
+                            </td>
+                            <td
+                              style={{
+                                padding: "6px 8px",
+                                borderBottom: "1px solid #eee",
+                                textAlign: "right",
+                              }}
+                            >
+                              {p.positionPoints}
+                            </td>
+                            <td
+                              style={{
+                                padding: "6px 8px",
+                                borderBottom: "1px solid #eee",
+                                textAlign: "right",
+                              }}
+                            >
+                              {p.weight}
+                            </td>
+                            <td
+                              style={{
+                                padding: "6px 8px",
+                                borderBottom: "1px solid #eee",
+                                textAlign: "right",
+                                fontWeight: 700,
+                              }}
+                            >
+                              {p.totalPoints}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                  <div style={{ fontSize: 20, fontWeight: 800 }}>{r.score}</div>
-                </div>
+                ) : (
+                  <ol style={{ marginTop: 10, paddingLeft: 20 }}>
+                    {r.picks.map((p) => (
+                      <li key={p.id} style={{ marginTop: 2 }}>
+                        <strong>{p.rank}.</strong> {p.golferName}
+                      </li>
+                    ))}
+                  </ol>
+                )}
               </div>
-
-              <ol style={{ marginTop: 10, paddingLeft: 20 }}>
-                {r.picks.map((p) => (
-                  <li key={p.id} style={{ marginTop: 2 }}>
-                    <strong>{p.rank}.</strong> {p.golferName}
-                  </li>
-                ))}
-              </ol>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

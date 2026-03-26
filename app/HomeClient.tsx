@@ -44,7 +44,7 @@ export default function HomeClient() {
 
   return (
     <div style={{ padding: 20, fontFamily: "system-ui, sans-serif", maxWidth: 960 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 800 }}>Golf Pools</h1>
+      <h1 style={{ fontSize: 28, fontWeight: 800 }}>Golf Pool</h1>
 
       <div style={{ marginTop: 20 }}>
         {orgs.length === 0 ? (

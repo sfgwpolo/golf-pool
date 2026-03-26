@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { getPoolStatus } from "../../../lib/poolStatus";
 
 type EntrySummary = {
   id: string;
@@ -12,8 +13,12 @@ type EntrySummary = {
 type PoolInfo = {
   id: string;
   name: string;
+  entryCost: string | null;
   entriesCloseAt: string;
-  locked: boolean;
+  startsAt: string;
+  locked?: boolean;
+  endedAt?: string | null;
+  isArchived?: boolean;
 };
 
 type Golfer = { golferId: string; golferName: string };
@@ -40,6 +45,10 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
   const [passcode, setPasscode] = useState("");
 
   useEffect(() => {
+    loadPoolPageData();
+  }, [poolId]);
+
+  useEffect(() => {
     fetch(`/api/pools/${poolId}/golfers`)
       .then((res) => res.json())
       .then((data) => {
@@ -55,10 +64,10 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
       });
   }, [poolId]);
 
-  const isLocked = useMemo(() => {
-    if (!pool) return false;
-    return new Date() >= new Date(pool.entriesCloseAt) || pool.locked;
-  }, [pool]);
+  const status = pool ? getPoolStatus(pool) : null;
+  const isEditable = status === "Open" || status === "Not Started";
+  const isLocked =
+    status === "Closed" || status === "Locked" || status === "Final";
 
   const isValid = useMemo(() => {
     if (!entryName || !email) return false;
@@ -68,11 +77,25 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
     return new Set(normalized).size === 10;
   }, [entryName, email, picks, passcode]);
 
+  const paidEntries = entries.filter((e) => e.isPaid).length;
+  const entryCost = Number(pool?.entryCost ?? 0);
+  const pot = paidEntries * entryCost;
+
   function updatePick(index: number, value: string) {
     const next = [...picks];
     next[index] = value;
     setPicks(next);
   }
+
+  function payoutBreakdown(pot: number) {
+    return {
+      first: pot * 0.6,
+      second: pot * 0.3,
+      third: pot * 0.1,
+    };
+  }
+
+  const payout = payoutBreakdown(pot);
 
   const unmatched = useMemo(() => {
     // If we don't have golfer list, don't block / warn
@@ -92,6 +115,32 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
     isLocked ||
     loading ||
     (golfers.length > 0 && unmatched.length > 0);
+
+  async function loadPoolPageData() {
+    try {
+      const [poolRes, entriesRes] = await Promise.all([
+        fetch(`/api/pools/${poolId}`, { cache: "no-store" }),
+        fetch(`/api/pools/${poolId}/entries/list`, { cache: "no-store" }),
+      ]);
+
+      const poolText = await poolRes.text();
+      const poolData = poolText ? JSON.parse(poolText) : null;
+      if (!poolRes.ok) {
+        throw new Error(poolData?.error || "Failed to load pool");
+      }
+
+      const entriesText = await entriesRes.text();
+      const entriesData = entriesText ? JSON.parse(entriesText) : null;
+      if (!entriesRes.ok) {
+        throw new Error(entriesData?.error || "Failed to load entries");
+      }
+
+      setPool(poolData.pool ?? null);
+      setEntries(entriesData.entries ?? []);
+    } catch (e: unknown) {
+      setMessage(e instanceof Error ? e.message : "Error loading pool");
+    }
+  }
 
   async function submitEntry() {
     if (!isValid || isLocked) return;
@@ -141,11 +190,9 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
       setEditEmail("");
 
       // reload list
-      const reload = await fetch(`/api/pools/${poolId}/entries/list`);
-      const reloadData = await reload.json();
-      setEntries(reloadData.entries || []);
-    } catch (e: any) {
-      setMessage(e?.message || "Error submitting entry");
+      await loadPoolPageData();
+    } catch (e: unknown) {
+      setMessage((e as Error)?.message || "Error submitting entry");
     } finally {
       setLoading(false);
     }
@@ -275,9 +322,17 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
       );
 
       setMessage("Editing existing entry");
-    } catch (e: any) {
-      setMessage(e?.message || "Error loading entry");
+    } catch (e: unknown) {
+      setMessage((e as Error)?.message || "Error loading entry");
     }
+  }
+
+  function statusColor(status: string | null) {
+    if (!status) return "#999";
+    if (status === "Open") return "green";
+    if (status === "Closed" || status === "Locked") return "crimson";
+    if (status === "Final") return "#555";
+    return "#999";
   }
 
   return (
@@ -292,13 +347,37 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
         {pool?.name || "Golf Pool"}
       </h1>
 
+      <div style={{ marginTop: 8, fontWeight: 600 }}>
+        Status: <span style={{ color: statusColor(status) }}>{status}</span>
+      </div>
+
+      {pool && entryCost > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <div>
+            <strong>Entry Cost:</strong> ${entryCost}
+          </div>
+          <div>
+            <strong>Paid Entries:</strong> {paidEntries}
+          </div>
+          <div>
+            <strong>Total Pot:</strong> ${pot}
+          </div>
+        </div>
+      )}
+
+      <div style={{ marginTop: 10 }}>
+        <div>🥇 1st: ${payout.first.toFixed(0)}</div>
+        <div>🥈 2nd: ${payout.second.toFixed(0)}</div>
+        <div>🥉 3rd: ${payout.third.toFixed(0)}</div>
+      </div>
+
       {pool && (
         <div style={{ marginTop: 6, opacity: 0.8 }}>
           Entries close at: {new Date(pool.entriesCloseAt).toLocaleString()}
         </div>
       )}
 
-      {isLocked && (
+      {pool && !isEditable && (
         <div
           style={{
             marginTop: 12,
@@ -308,10 +387,11 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
             fontWeight: 600,
           }}
         >
-          Entries are now closed.
+          {status === "Closed" && "Entries are now closed."}
+          {status === "Locked" && "This pool has been locked."}
+          {status === "Final" && "This pool is complete."}
         </div>
       )}
-
       <div style={{ marginTop: 20 }}>
         <h3>Edit Existing Entry</h3>
 
@@ -324,6 +404,7 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
 
         <button
           onClick={findEntriesByEmail}
+          disabled={!isEditable}
           style={{ marginTop: 8, padding: "6px 10px" }}
         >
           Find My Entries
@@ -335,6 +416,7 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
               <li key={e.id}>
                 <button
                   onClick={() => loadEntry(e.id)}
+                  disabled={!isEditable}
                   style={{ cursor: "pointer" }}
                 >
                   {e.entryName} – {new Date(e.createdAt).toLocaleString()}
@@ -349,6 +431,7 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
         <h3>Submit Entry</h3>
 
         <input
+          disabled={!isEditable}
           value={entryName}
           onChange={(e) => setEntryName(e.target.value)}
           placeholder="Your Name"
@@ -356,6 +439,7 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
         />
 
         <input
+          disabled={!isEditable}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email"
@@ -363,6 +447,7 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
         />
 
         <input
+          disabled={!isEditable}
           value={passcode}
           onChange={(e) => setPasscode(e.target.value)}
           placeholder="Code word (to edit later)"
@@ -387,6 +472,7 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
         {picks.map((pick, i) => (
           <div key={i} style={{ marginTop: 8 }}>
             <input
+              disabled={!isEditable}
               value={pick}
               onChange={(e) => updatePick(i, e.target.value)}
               onBlur={() => autocorrectPick(i)}
@@ -431,7 +517,7 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
 
         <button
           onClick={submitEntry}
-          disabled={disableSubmit}
+          disabled={disableSubmit || !isEditable}
           style={{
             marginTop: 12,
             padding: "10px 14px",
