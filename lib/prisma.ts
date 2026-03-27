@@ -12,7 +12,9 @@ const pgPool =
   globalForPrisma.pgPool ??
   new Pool({
     connectionString: process.env.DATABASE_URL,
-  });
+    max: 10, // Limits the number of connections this specific 'pool' can open
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,  });
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.pgPool = pgPool;
