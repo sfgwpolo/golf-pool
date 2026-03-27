@@ -4,11 +4,11 @@ import { requireOrgAdmin } from "../../../../../lib/adminAuth";
 
 export async function PATCH(
   req: Request,
-  ctx: { params: Promise<{ orgId: string }> }
+  ctx: { params: Promise<{ orgSlug: string }> }
 ) {
   try {
-    const { orgId } = await ctx.params;
-    await requireOrgAdmin(req, orgId);
+    const { orgSlug } = await ctx.params;
+    await requireOrgAdmin(req, orgSlug);
 
     const body = await req.json().catch(() => null);
     if (!body) {
@@ -24,7 +24,7 @@ export async function PATCH(
         : null;
 
     const updated = await prisma.organization.update({
-      where: { id: orgId },
+      where: { slug: orgSlug },
       data: {
         description,
         emblemUrl,
