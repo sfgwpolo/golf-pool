@@ -4,10 +4,10 @@ import { requireOrgAdmin } from "../../../../../lib/adminAuth";
 
 export async function PATCH(
   req: Request,
-  ctx: { params: Promise<{ orgSlug: string }> }
+  { params }: { params: Promise<{ orgSlug: string }> }
 ) {
   try {
-    const { orgSlug } = await ctx.params;
+    const { orgSlug } = await params;
     await requireOrgAdmin(req, orgSlug);
 
     const body = await req.json().catch(() => null);
