@@ -9,7 +9,7 @@ export default async function AdminPoolPage({
   const { poolId } = await params;
 
   return (
-    <div style={{ padding: 20, fontFamily: "system-ui, sans-serif" }}>
+    <div className="p-5 font-sans max-w-4xl mx-auto bg-white dark:bg-gray-900 text-black dark:text-white">
       <div style={{ maxWidth: 960 }}>
         <AdminHeader />
         <AdminPoolClient poolId={poolId} />

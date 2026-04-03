@@ -93,17 +93,14 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
       let data: unknown = null;
       try {
         data = JSON.parse(text);
-      } catch {
-        // If it's not JSON (e.g., HTML 404), we'll handle below
-      }
+      } catch {}
 
       if (!res.ok) {
         throw new Error(
-          getErrorMessageFromJson(data) || text || "Failed to load entries",
+          getErrorMessageFromJson(data) || text || "Failed to load entries"
         );
       }
 
-      // Validate-ish: ensure it's an object with pool/entries
       if (!data || typeof data !== "object") {
         throw new Error("Unexpected response (not JSON object)");
       }
@@ -114,53 +111,15 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
       }
 
       setPool(obj.pool);
-      setRulesText(obj.pool.rulesText || "");
-      setRulesText(
-        (
-          obj.pool as PoolInfo & {
-            rulesText?: string | null;
-            entryCost?: string | null;
-            payoutText?: string | null;
-            endedAt?: string | null;
-            isArchived?: boolean;
-          }
-        ).rulesText ?? "",
-      );
-
-      setEntryCost(
-        (
-          obj.pool as PoolInfo & {
-            entryCost?: string | null;
-          }
-        ).entryCost ?? "",
-      );
-
-      setPayoutText(
-        (
-          obj.pool as PoolInfo & {
-            payoutText?: string | null;
-          }
-        ).payoutText ?? "",
-      );
-
+      setRulesText((obj.pool as any).rulesText ?? "");
+      setEntryCost((obj.pool as any).entryCost ?? "");
+      setPayoutText((obj.pool as any).payoutText ?? "");
       setEndedAt(
-        (
-          obj.pool as PoolInfo & {
-            endedAt?: string | null;
-          }
-        ).endedAt
-          ? new Date(
-              (obj.pool as PoolInfo & { endedAt?: string | null })
-                .endedAt as string,
-            )
-              .toISOString()
-              .slice(0, 16)
-          : "",
+        (obj.pool as any).endedAt
+          ? new Date((obj.pool as any).endedAt).toISOString().slice(0, 16)
+          : ""
       );
-
-      setIsArchived(
-        Boolean((obj.pool as PoolInfo & { isArchived?: boolean }).isArchived),
-      );
+      setIsArchived(Boolean((obj.pool as any).isArchived));
       setEntries(obj.entries);
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Error");
@@ -200,7 +159,7 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
       await loadPurgeInfo();
     } catch (e: unknown) {
       setDetailsMsg(
-        e instanceof Error ? e.message : "Error saving pool details",
+        e instanceof Error ? e.message : "Error saving pool details"
       );
     } finally {
       setDetailsLoading(false);
@@ -217,8 +176,8 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
         },
         body: JSON.stringify(
           isPaid
-            ? { isPaid: true, paidAmount: 25, paidMethod: "Venmo" } // change defaults anytime
-            : { isPaid: false },
+            ? { isPaid: true, paidAmount: 25, paidMethod: "Venmo" }
+            : { isPaid: false }
         ),
       });
 
@@ -231,10 +190,9 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
 
       if (!res.ok) {
         throw new Error(
-          getErrorMessageFromJson(data) || text || "Failed to update payment",
+          getErrorMessageFromJson(data) || text || "Failed to update payment"
         );
       }
-      // refresh list
       await fetchEntries();
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Error");
@@ -256,13 +214,13 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
 
       if (!res.ok) {
         throw new Error(
-          getErrorMessageFromJson(data) || text || "Failed to refresh snapshot",
+          getErrorMessageFromJson(data) || text || "Failed to refresh snapshot"
         );
       }
 
       const count =
         data && typeof data === "object" && "count" in data
-          ? Number((data as Record<string, unknown>).count)
+          ? Number((data as any).count)
           : "?";
 
       alert(`Snapshot saved (${count} golfers).`);
@@ -275,7 +233,7 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
     setErr("");
     try {
       const ok = window.confirm(
-        "Purge unpaid entries? (This will soft-delete them.)",
+        "Purge unpaid entries? (This will soft-delete them.)"
       );
       if (!ok) return;
 
@@ -289,25 +247,23 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
       let data: unknown = null;
       try {
         data = JSON.parse(text);
-      } catch {
-        // ignore
-      }
+      } catch {}
 
       if (!res.ok) {
         const msg =
           data && typeof data === "object" && "error" in data
-            ? String((data as Record<string, unknown>).error)
+            ? String((data as any).error)
             : text || "Failed to purge unpaid";
         throw new Error(msg);
       }
 
       const purged =
         data && typeof data === "object" && "purged" in data
-          ? Number((data as Record<string, unknown>).purged)
+          ? Number((data as any).purged)
           : NaN;
 
       alert(`Purged ${Number.isFinite(purged) ? purged : "?"} unpaid entries.`);
-      await fetchEntries(); // reload entries
+      await fetchEntries();
       await loadPurgeInfo();
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Error");
@@ -331,8 +287,7 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
         return;
       }
 
-      const obj = data as PurgeInfo;
-      setPurgeInfo(obj);
+      setPurgeInfo(data as PurgeInfo);
     } catch {
       setPurgeInfo(null);
     }
@@ -362,8 +317,6 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
 
       setResetMsg("Code word reset successfully.");
       setResetCode("");
-      // optionally keep email for repeated resets:
-      // setResetEmail("");
     } catch (e: unknown) {
       setResetMsg(e instanceof Error ? e.message : "Error resetting code word");
     } finally {
@@ -375,56 +328,32 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
     !!purgeInfo && purgeInfo.allowed && purgeInfo.unpaidCount > 0;
 
   return (
-    <div style={{ marginTop: 12 }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700 }}>Admin: Pool</h1>
-      <div style={{ marginTop: 8, opacity: 0.8 }}>
-        Pool ID: <code>{poolId}</code>
+    <div className="mt-3 bg-white dark:bg-gray-900 text-black dark:text-white">
+      <h1 className="text-2xl font-bold">Admin: Pool</h1>
+      <div className="mt-2 opacity-80 text-sm">
+        Pool ID: <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">{poolId}</code>
       </div>
 
-      <div
-        style={{
-          marginTop: 16,
-          padding: 12,
-          border: "1px solid #ddd",
-          borderRadius: 8,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
+      <div className="mt-4 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800">
+        <div className="flex gap-2 items-center flex-wrap">
           <button
             onClick={async () => {
               await fetchEntries();
               await loadPurgeInfo();
             }}
-            style={{
-              padding: "8px 12px",
-              border: "1px solid #ccc",
-              borderRadius: 6,
-              cursor: "pointer",
-            }}
+            className="px-3 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded"
           >
             Refresh
           </button>
 
           <button
             onClick={refreshSnapshot}
-            style={{
-              padding: "8px 12px",
-              border: "1px solid #ccc",
-              borderRadius: 6,
-              cursor: "pointer",
-            }}
+            className="px-3 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded"
           >
             Refresh Snapshot
           </button>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div className="flex flex-col gap-1.5">
             <button
               onClick={purgeUnpaid}
               disabled={!canPurge}
@@ -437,23 +366,16 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
                       ? "No unpaid entries to remove"
                       : "Soft-delete unpaid entries"
               }
-              style={{
-                padding: "8px 12px",
-                border: "1px solid #ccc",
-                borderRadius: 6,
-                cursor: canPurge ? "pointer" : "not-allowed",
-                opacity: canPurge ? 1 : 0.5,
-                width: "fit-content",
-              }}
+              className="px-3 py-2 bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
             >
               Purge unpaid{" "}
-              <span style={{ opacity: 0.8 }}>
+              <span className="opacity-80">
                 ({purgeInfo ? purgeInfo.unpaidCount : "…"})
               </span>
             </button>
 
             {purgeInfo && (
-              <div style={{ fontSize: 12, opacity: 0.75 }}>
+              <div className="text-xs opacity-75">
                 Eligible when tournament starts (
                 {new Date(purgeInfo.startsAt).toLocaleString()})
                 {purgeInfo.locked ? " • pool is locked" : ""}
@@ -461,18 +383,10 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
             )}
           </div>
         </div>
-        <div
-          style={{
-            marginTop: 16,
-            padding: 12,
-            border: "1px solid #ddd",
-            borderRadius: 8,
-          }}
-        >
-          <div style={{ fontSize: 16, fontWeight: 700 }}>
-            Reset user code word
-          </div>
-          <div style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>
+
+        <div className="mt-4 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900">
+          <div className="font-bold">Reset user code word</div>
+          <div className="text-xs opacity-75 mt-1">
             Resets the per-pool code word for an email address. The old code
             word will stop working.
           </div>
@@ -481,14 +395,14 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
             value={resetEmail}
             onChange={(e) => setResetEmail(e.target.value)}
             placeholder="User email (e.g., joyce@test.com)"
-            style={{ width: "100%", padding: 8, marginTop: 10 }}
+            className="w-full p-2 mt-2.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
           />
 
           <input
             value={resetCode}
             onChange={(e) => setResetCode(e.target.value)}
             placeholder="New code word (4–50 characters)"
-            style={{ width: "100%", padding: 8, marginTop: 8 }}
+            className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
           />
 
           <button
@@ -496,43 +410,30 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
             disabled={
               resetLoading || !resetEmail.trim() || resetCode.trim().length < 4
             }
-            style={{
-              marginTop: 10,
-              padding: "8px 12px",
-              cursor:
-                resetLoading ||
-                !resetEmail.trim() ||
-                resetCode.trim().length < 4
-                  ? "not-allowed"
-                  : "pointer",
-              opacity:
-                resetLoading ||
-                !resetEmail.trim() ||
-                resetCode.trim().length < 4
-                  ? 0.5
-                  : 1,
-            }}
+            className="mt-2 px-3 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
           >
             {resetLoading ? "Resetting…" : "Reset code word"}
           </button>
 
           {resetMsg && (
-            <div style={{ marginTop: 8, fontSize: 13 }}>
-              <strong>{resetMsg}</strong>
+            <div className="mt-2 text-xs font-semibold text-green-600 dark:text-green-400">
+              {resetMsg}
             </div>
           )}
         </div>
 
         {pool && (
-          <div style={{ marginTop: 10, fontSize: 14, opacity: 0.9 }}>
+          <div className="mt-4 p-3 border border-gray-300 dark:border-gray-600 rounded-lg">
             <div>
               <strong>{pool.name}</strong>
             </div>
-            <div>
+            <div className="text-sm">
               entriesCloseAt: {new Date(pool.entriesCloseAt).toLocaleString()}
             </div>
-            <div>startsAt: {new Date(pool.startsAt).toLocaleString()}</div>
-            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div className="text-sm">
+              startsAt: {new Date(pool.startsAt).toLocaleString()}
+            </div>
+            <label className="flex gap-2 items-center mt-2">
               <input
                 type="checkbox"
                 checked={pool.locked}
@@ -549,122 +450,92 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
                   const data = text ? JSON.parse(text) : null;
                   if (!res.ok)
                     throw new Error(
-                      data?.error || `Request failed (${res.status})`,
+                      data?.error || `Request failed (${res.status})`
                     );
 
-                  // refresh UI
                   await fetchEntries();
                   await loadPurgeInfo();
                 }}
               />
-              Manually lock pool (stop edits/entries)
+              <span className="text-sm">Manually lock pool (stop edits/entries)</span>
             </label>
           </div>
         )}
-        <div
-          style={{
-            marginTop: 16,
-            padding: 12,
-            border: "1px solid #ddd",
-            borderRadius: 8,
-          }}
-        >
-          <div style={{ fontSize: 16, fontWeight: 700 }}>
-            Pool display details
-          </div>
+
+        <div className="mt-4 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900">
+          <div className="font-bold">Pool display details</div>
 
           <textarea
             value={rulesText}
             onChange={(e) => setRulesText(e.target.value)}
             placeholder="Rules text"
             rows={5}
-            style={{ width: "100%", padding: 8, marginTop: 10 }}
+            className="w-full p-2 mt-2.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
           />
 
           <input
             value={entryCost}
             onChange={(e) => setEntryCost(e.target.value)}
             placeholder="Entry cost (e.g. 25)"
-            style={{ width: "100%", padding: 8, marginTop: 8 }}
+            className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
           />
 
           <input
             value={payoutText}
             onChange={(e) => setPayoutText(e.target.value)}
             placeholder="Payout text (e.g. 1st: 50%, 2nd: 30%, 3rd: 20%)"
-            style={{ width: "100%", padding: 8, marginTop: 8 }}
+            className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
           />
 
-          <div style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>
-            Ended at (optional)
-          </div>
+          <div className="mt-2 text-xs opacity-80">Ended at (optional)</div>
           <input
             type="datetime-local"
             value={endedAt}
             onChange={(e) => setEndedAt(e.target.value)}
-            style={{ width: "100%", padding: 8, marginTop: 4 }}
+            className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
           />
 
-          <label
-            style={{
-              display: "flex",
-              gap: 8,
-              alignItems: "center",
-              marginTop: 10,
-            }}
-          >
+          <label className="flex gap-2 items-center mt-2">
             <input
               type="checkbox"
               checked={isArchived}
               onChange={(e) => setIsArchived(e.target.checked)}
             />
-            Archive this pool
+            <span className="text-sm">Archive this pool</span>
           </label>
 
           <button
             onClick={savePoolDetails}
             disabled={detailsLoading}
-            style={{
-              marginTop: 10,
-              padding: "8px 12px",
-              border: "1px solid #ccc",
-              borderRadius: 6,
-              cursor: detailsLoading ? "not-allowed" : "pointer",
-              opacity: detailsLoading ? 0.5 : 1,
-            }}
+            className="mt-2 px-3 py-2 bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
           >
             {detailsLoading ? "Saving..." : "Save pool details"}
           </button>
 
           {detailsMsg && (
-            <div style={{ marginTop: 8, fontSize: 13 }}>
-              <strong>{detailsMsg}</strong>
+            <div className="mt-2 text-xs font-semibold text-green-600 dark:text-green-400">
+              {detailsMsg}
             </div>
           )}
         </div>
+
         {err && (
-          <div style={{ marginTop: 10, color: "crimson" }}>
+          <div className="mt-4 text-red-600 dark:text-red-400 font-semibold">
             <strong>Error:</strong> {err}
           </div>
         )}
       </div>
 
-      <div style={{ marginTop: 16 }}>
+      <div className="mt-4">
         {loading ? (
           <div>Loading…</div>
         ) : entries.length === 0 ? (
-          <div style={{ opacity: 0.8 }}>No entries loaded yet.</div>
+          <div className="opacity-80 text-sm">No entries loaded yet.</div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                marginTop: 8,
-              }}
-            >
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
               <thead>
-                <tr>
+                <tr className="border-b border-gray-300 dark:border-gray-600">
                   {[
                     "Paid",
                     "Entry",
@@ -675,12 +546,7 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
                   ].map((h) => (
                     <th
                       key={h}
-                      style={{
-                        textAlign: "left",
-                        padding: 8,
-                        borderBottom: "1px solid #ddd",
-                        whiteSpace: "nowrap",
-                      }}
+                      className="text-left p-2 border-b border-gray-300 dark:border-gray-600 whitespace-nowrap font-semibold"
                     >
                       {h}
                     </th>
@@ -689,53 +555,44 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
               </thead>
               <tbody>
                 {entries.map((e) => (
-                  <tr key={e.id} style={{ opacity: e.isDeleted ? 0.45 : 1 }}>
-                    <td style={{ padding: 8, borderBottom: "1px solid #eee" }}>
+                  <tr
+                    key={e.id}
+                    className={`border-b border-gray-200 dark:border-gray-700 ${
+                      e.isDeleted ? "opacity-45" : ""
+                    }`}
+                  >
+                    <td className="p-2">
                       <input
                         type="checkbox"
                         checked={e.isPaid}
                         disabled={e.isDeleted}
                         onChange={(ev) => togglePaid(e.id, ev.target.checked)}
                       />
-                      <div style={{ fontSize: 12, opacity: 0.8 }}>
+                      <div className="text-xs opacity-80">
                         {e.isPaid ? "Paid" : "Unpaid"}
                       </div>
                     </td>
-                    <td style={{ padding: 8, borderBottom: "1px solid #eee" }}>
-                      <div style={{ fontWeight: 600 }}>{e.entryName}</div>
-                      <div style={{ fontSize: 12, opacity: 0.7 }}>
-                        <code>{e.id}</code>
+                    <td className="p-2">
+                      <div className="font-semibold">{e.entryName}</div>
+                      <div className="text-xs opacity-70">
+                        <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">{e.id}</code>
                       </div>
                     </td>
-                    <td style={{ padding: 8, borderBottom: "1px solid #eee" }}>
-                      {e.email}
-                    </td>
-                    <td
-                      style={{
-                        padding: 8,
-                        borderBottom: "1px solid #eee",
-                        minWidth: 360,
-                      }}
-                    >
-                      <ol style={{ margin: 0, paddingLeft: 18 }}>
+                    <td className="p-2 text-xs">{e.email}</td>
+                    <td className="p-2 min-w-96">
+                      <ol className="m-0 pl-4.5 text-xs space-y-0.5">
                         {e.picks.map((p) => (
-                          <li key={p.id} style={{ fontSize: 13 }}>
+                          <li key={p.id}>
                             {p.golferName}{" "}
-                            <span style={{ opacity: 0.6 }}>({p.golferId})</span>
+                            <span className="opacity-60">({p.golferId})</span>
                           </li>
                         ))}
                       </ol>
                     </td>
-                    <td
-                      style={{
-                        padding: 8,
-                        borderBottom: "1px solid #eee",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
+                    <td className="p-2 text-xs whitespace-nowrap">
                       {new Date(e.createdAt).toLocaleString()}
                     </td>
-                    <td style={{ padding: 8, borderBottom: "1px solid #eee" }}>
+                    <td className="p-2 text-xs">
                       {e.isDeleted ? "Yes" : "No"}
                     </td>
                   </tr>
@@ -743,9 +600,9 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
               </tbody>
             </table>
 
-            <div style={{ marginTop: 10, fontSize: 13, opacity: 0.75 }}>
-              Tip: the “Paid” checkbox currently defaults paidAmount=25 and
-              paidMethod=Venmo when turning on. We’ll make those editable next.
+            <div className="mt-2.5 text-xs opacity-75">
+              Tip: the "Paid" checkbox currently defaults paidAmount=25 and
+              paidMethod=Venmo when turning on. We'll make those editable next.
             </div>
           </div>
         )}

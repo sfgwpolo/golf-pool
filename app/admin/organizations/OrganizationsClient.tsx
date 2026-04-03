@@ -51,9 +51,7 @@ type SimpleOkResponse = {
 
 export default function OrganizationsClient() {
   const [orgs, setOrgs] = useState<Org[]>([]);
-  const [orgDescription, setOrgDescription] = useState<Record<string, string>>(
-    {},
-  );
+  const [orgDescription, setOrgDescription] = useState<Record<string, string>>({});
   const [orgEmblemUrl, setOrgEmblemUrl] = useState<Record<string, string>>({});
   const [orgMsg, setOrgMsg] = useState("");
   const [loading, setLoading] = useState(false);
@@ -63,7 +61,7 @@ export default function OrganizationsClient() {
   const [newEmail, setNewEmail] = useState("");
   const [newPw, setNewPw] = useState("");
   const [newRole, setNewRole] = useState<"ORG_ADMIN" | "SUPER_ADMIN">(
-    "ORG_ADMIN",
+    "ORG_ADMIN"
   );
 
   const [assignOrgId, setAssignOrgId] = useState("");
@@ -88,7 +86,7 @@ export default function OrganizationsClient() {
             description: newOrgDescription,
             emblemUrl: newOrgEmblemUrl,
           }),
-        },
+        }
       );
 
       setMsg("Organization created.");
@@ -111,7 +109,7 @@ export default function OrganizationsClient() {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isArchived }),
-        },
+        }
       );
 
       setMsg(isArchived ? "Organization archived." : "Organization restored.");
@@ -170,7 +168,7 @@ export default function OrganizationsClient() {
             description: orgDescription[orgId] ?? "",
             emblemUrl: orgEmblemUrl[orgId] ?? "",
           }),
-        },
+        }
       );
 
       setOrgMsg("Organization details saved.");
@@ -193,7 +191,7 @@ export default function OrganizationsClient() {
             password: newPw,
             role: newRole,
           }),
-        },
+        }
       );
 
       setMsg(`Created admin: ${data.adminUser.email}`);
@@ -214,7 +212,7 @@ export default function OrganizationsClient() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ adminId: assignAdminId }),
-        },
+        }
       );
 
       setMsg("Assigned admin to org.");
@@ -231,7 +229,7 @@ export default function OrganizationsClient() {
         `/api/admin/organizations/${orgId}/admins?adminId=${adminId}`,
         {
           method: "DELETE",
-        },
+        }
       );
 
       setMsg("Removed admin from org.");
@@ -242,60 +240,46 @@ export default function OrganizationsClient() {
   }
 
   return (
-    <div style={{ maxWidth: 900 }}>
-      <h1 style={{ fontSize: 24, fontWeight: 800 }}>Organizations & Admins</h1>
+    <div className="max-w-4xl mx-auto bg-white dark:bg-gray-900 text-black dark:text-white">
+      <h1 className="text-2xl font-bold">Organizations & Admins</h1>
 
-      <div
-        style={{
-          marginTop: 10,
-          display: "flex",
-          gap: 10,
-          alignItems: "center",
-        }}
-      >
+      <div className="mt-2.5 flex gap-2.5 items-center flex-wrap">
         <button
           onClick={load}
           disabled={loading}
-          style={{ padding: "8px 12px" }}
+          className="px-3 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? "Refreshing…" : "Refresh"}
         </button>
         {msg && (
-          <div style={{ fontSize: 13 }}>
-            <strong>{msg}</strong>
+          <div className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+            {msg}
           </div>
         )}
       </div>
 
-      <div
-        style={{
-          marginTop: 16,
-          padding: 12,
-          border: "1px solid #ddd",
-          borderRadius: 8,
-        }}
-      >
-        <div style={{ fontSize: 16, fontWeight: 700 }}>Create organization</div>
+      <div className="mt-4 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800">
+        <div className="font-bold">Create organization</div>
 
         <input
           value={newOrgName}
           onChange={(e) => setNewOrgName(e.target.value)}
           placeholder="Organization name"
-          style={{ width: "100%", padding: 8, marginTop: 10 }}
+          className="w-full p-2 mt-2.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
         />
 
         <input
           value={newOrgSlug}
           onChange={(e) => setNewOrgSlug(e.target.value)}
           placeholder="Slug (e.g. joyce-demo)"
-          style={{ width: "100%", padding: 8, marginTop: 8 }}
+          className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
         />
 
         <input
           value={newOrgEmblemUrl}
           onChange={(e) => setNewOrgEmblemUrl(e.target.value)}
           placeholder="Emblem URL"
-          style={{ width: "100%", padding: 8, marginTop: 8 }}
+          className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
         />
 
         <textarea
@@ -303,46 +287,39 @@ export default function OrganizationsClient() {
           onChange={(e) => setNewOrgDescription(e.target.value)}
           placeholder="Organization description"
           rows={3}
-          style={{ width: "100%", padding: 8, marginTop: 8 }}
+          className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
         />
 
         <button
           onClick={createOrganization}
           disabled={!newOrgName.trim() || !newOrgSlug.trim()}
-          style={{ marginTop: 10, padding: "8px 12px" }}
+          className="mt-2 px-3 py-2 bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
         >
           Create organization
         </button>
       </div>
 
-      <div
-        style={{
-          marginTop: 16,
-          padding: 12,
-          border: "1px solid #ddd",
-          borderRadius: 8,
-        }}
-      >
-        <div style={{ fontSize: 16, fontWeight: 700 }}>Create admin user</div>
+      <div className="mt-4 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800">
+        <div className="font-bold">Create admin user</div>
         <input
           value={newEmail}
           onChange={(e) => setNewEmail(e.target.value)}
           placeholder="Email"
-          style={{ width: "100%", padding: 8, marginTop: 10 }}
+          className="w-full p-2 mt-2.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
         />
         <input
           value={newPw}
           onChange={(e) => setNewPw(e.target.value)}
           placeholder="Password (min 8 chars)"
           type="password"
-          style={{ width: "100%", padding: 8, marginTop: 8 }}
+          className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
         />
         <select
           value={newRole}
           onChange={(e) =>
             setNewRole(e.target.value as "ORG_ADMIN" | "SUPER_ADMIN")
           }
-          style={{ width: "100%", padding: 8, marginTop: 8 }}
+          className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
         >
           <option value="ORG_ADMIN">ORG_ADMIN</option>
           <option value="SUPER_ADMIN">SUPER_ADMIN</option>
@@ -350,28 +327,19 @@ export default function OrganizationsClient() {
         <button
           onClick={createAdmin}
           disabled={!newEmail.trim() || newPw.length < 8}
-          style={{ marginTop: 10, padding: "8px 12px" }}
+          className="mt-2 px-3 py-2 bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
         >
           Create admin
         </button>
       </div>
 
-      <div
-        style={{
-          marginTop: 16,
-          padding: 12,
-          border: "1px solid #ddd",
-          borderRadius: 8,
-        }}
-      >
-        <div style={{ fontSize: 16, fontWeight: 700 }}>
-          Assign admin to organization
-        </div>
+      <div className="mt-4 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800">
+        <div className="font-bold">Assign admin to organization</div>
 
         <select
           value={assignOrgId}
           onChange={(e) => setAssignOrgId(e.target.value)}
-          style={{ width: "100%", padding: 8, marginTop: 10 }}
+          className="w-full p-2 mt-2.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
         >
           <option value="">Select organization…</option>
           {orgs.map((o) => (
@@ -384,7 +352,7 @@ export default function OrganizationsClient() {
         <select
           value={assignAdminId}
           onChange={(e) => setAssignAdminId(e.target.value)}
-          style={{ width: "100%", padding: 8, marginTop: 8 }}
+          className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
         >
           <option value="">Select admin…</option>
           {adminUsers.map((a) => (
@@ -397,59 +365,49 @@ export default function OrganizationsClient() {
         <button
           onClick={assignAdmin}
           disabled={!assignOrgId || !assignAdminId}
-          style={{ marginTop: 10, padding: "8px 12px" }}
+          className="mt-2 px-3 py-2 bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
         >
           Assign
         </button>
 
-        <div style={{ marginTop: 10, fontSize: 13, opacity: 0.8 }}>
+        <div className="mt-2.5 text-xs opacity-80">
           Select an admin user and assign them to an organization.
         </div>
       </div>
 
-      <div style={{ marginTop: 18 }}>
+      <div className="mt-4 space-y-3">
         {orgs.map((o) => (
           <div
             key={o.id}
-            style={{
-              marginTop: 12,
-              padding: 12,
-              border: "1px solid #ddd",
-              borderRadius: 8,
-            }}
+            className="p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800"
           >
-            <div style={{ fontSize: 18, fontWeight: 800 }}>
+            <div className="text-lg font-bold">
               {o.name}{" "}
-              <span style={{ opacity: 0.6, fontSize: 13 }}>({o.slug})</span>
+              <span className="opacity-60 text-xs">({o.slug})</span>
             </div>
 
-            <label
-              style={{
-                display: "flex",
-                gap: 8,
-                alignItems: "center",
-                marginTop: 10,
-              }}
-            >
+            <label className="flex gap-2 items-center mt-2.5">
               <input
                 type="checkbox"
                 checked={Boolean(o.isArchived)}
                 onChange={(e) => toggleArchiveOrg(o.id, e.target.checked)}
               />
-              Archive organization
+              <span>Archive organization</span>
             </label>
 
-            <div style={{ marginTop: 8, fontWeight: 700 }}>Admins</div>
+            <div className="mt-2 font-bold">Admins</div>
             {o.admins.length === 0 ? (
-              <div style={{ opacity: 0.7, marginTop: 6 }}>None assigned.</div>
+              <div className="opacity-70 text-sm">None assigned.</div>
             ) : (
-              <ul style={{ marginTop: 6 }}>
+              <ul className="mt-1.5 space-y-1">
                 {o.admins.map((a) => (
-                  <li key={a.id} style={{ marginTop: 4 }}>
-                    {a.email} <span style={{ opacity: 0.7 }}>({a.role})</span>{" "}
+                  <li key={a.id} className="text-sm flex items-center justify-between">
+                    <span>
+                      {a.email} <span className="opacity-70">({a.role})</span>
+                    </span>
                     <button
                       onClick={() => unassign(o.id, a.id)}
-                      style={{ marginLeft: 8, padding: "2px 8px" }}
+                      className="ml-2 px-2 py-1 text-xs bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white rounded"
                     >
                       Remove
                     </button>
@@ -458,14 +416,8 @@ export default function OrganizationsClient() {
               </ul>
             )}
 
-            <div
-              style={{
-                marginTop: 10,
-                paddingTop: 10,
-                borderTop: "1px solid #eee",
-              }}
-            >
-              <div style={{ fontWeight: 700 }}>Public landing page details</div>
+            <div className="mt-2.5 pt-2.5 border-t border-gray-300 dark:border-gray-600">
+              <div className="font-bold">Public landing page details</div>
 
               <input
                 value={orgEmblemUrl[o.id] ?? ""}
@@ -476,7 +428,7 @@ export default function OrganizationsClient() {
                   }))
                 }
                 placeholder="Emblem URL"
-                style={{ width: "100%", padding: 8, marginTop: 8 }}
+                className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
               />
 
               <textarea
@@ -489,12 +441,12 @@ export default function OrganizationsClient() {
                 }
                 placeholder="Organization description"
                 rows={3}
-                style={{ width: "100%", padding: 8, marginTop: 8 }}
+                className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
               />
 
               <button
                 onClick={() => saveOrgDetails(o.id)}
-                style={{ marginTop: 8, padding: "8px 12px" }}
+                className="mt-2 px-3 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded font-semibold"
               >
                 Save org details
               </button>

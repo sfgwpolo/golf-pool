@@ -98,11 +98,10 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
   const payout = payoutBreakdown(pot);
 
   const unmatched = useMemo(() => {
-    // If we don't have golfer list, don't block / warn
     if (golfers.length === 0) return [];
 
     const golferNameSet = new Set(
-      golfers.map((g) => normalizeForMatch(g.golferName)),
+      golfers.map((g) => normalizeForMatch(g.golferName))
     );
 
     return picks
@@ -179,7 +178,7 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
       setMessage(
         editingEntryId
           ? "Entry updated successfully!"
-          : "Entry submitted successfully!",
+          : "Entry submitted successfully!"
       );
       setEntryName("");
       setEmail("");
@@ -189,7 +188,6 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
       setFoundEntries([]);
       setEditEmail("");
 
-      // reload list
       await loadPoolPageData();
     } catch (e: unknown) {
       setMessage((e as Error)?.message || "Error submitting entry");
@@ -213,12 +211,10 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
     const q = normalizeForMatch(input);
     if (!q) return null;
 
-    // 1️⃣ Exact normalized match
     for (const name of golferNames) {
       if (normalizeForMatch(name) === q) return name;
     }
 
-    // 2️⃣ Unique last-name match (e.g., "Scheffler")
     const tokens = q.split(" ").filter(Boolean);
     if (tokens.length === 1) {
       const t = tokens[0];
@@ -231,10 +227,9 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
       if (matches.length === 1) return matches[0];
     }
 
-    // 3️⃣ Unique substring match (min length 4)
     if (q.length >= 4) {
       const matches = golferNames.filter((n) =>
-        normalizeForMatch(n).includes(q),
+        normalizeForMatch(n).includes(q)
       );
       if (matches.length === 1) return matches[0];
     }
@@ -245,7 +240,6 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
   function autocorrectPick(index: number) {
     const current = picks[index] || "";
 
-    // Clear message if field empty
     if (!current.trim()) {
       setAutoFillMsg((prev) => {
         const next = { ...prev };
@@ -258,7 +252,6 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
     const golferNames = golfers.map((g) => g.golferName);
     const match = bestGolferNameMatch(current, golferNames);
 
-    // Clear message if no confident match
     if (!match) {
       setAutoFillMsg((prev) => {
         const next = { ...prev };
@@ -268,7 +261,6 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
       return;
     }
 
-    // If match is different, update picks + show message
     if (match !== current) {
       setPicks((prev) => {
         const next = [...prev];
@@ -281,7 +273,6 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
         [index]: `Auto-filled to: ${match}`,
       }));
     } else {
-      // Exact match typed — clear message
       setAutoFillMsg((prev) => {
         const next = { ...prev };
         delete next[index];
@@ -296,8 +287,8 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
     try {
       const res = await fetch(
         `/api/pools/${poolId}/entries/by-email?email=${encodeURIComponent(
-          editEmail.trim().toLowerCase(),
-        )}`,
+          editEmail.trim().toLowerCase()
+        )}`
       );
       const data = await res.json();
       setFoundEntries(data.entries || []);
@@ -318,7 +309,7 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
       setPicks(
         data.entry.picks
           .sort((a: any, b: any) => a.rank - b.rank)
-          .map((p: any) => p.golferName),
+          .map((p: any) => p.golferName)
       );
 
       setMessage("Editing existing entry");
@@ -328,31 +319,26 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
   }
 
   function statusColor(status: string | null) {
-    if (!status) return "#999";
-    if (status === "Open") return "green";
-    if (status === "Closed" || status === "Locked") return "crimson";
-    if (status === "Final") return "#555";
-    return "#999";
+    if (!status) return "text-gray-600 dark:text-gray-400";
+    if (status === "Open") return "text-green-600 dark:text-green-400 font-bold";
+    if (status === "Closed" || status === "Locked")
+      return "text-red-600 dark:text-red-400 font-bold";
+    if (status === "Final") return "text-gray-600 dark:text-gray-400";
+    return "text-gray-600 dark:text-gray-400";
   }
 
   return (
-    <div
-      style={{
-        padding: 20,
-        fontFamily: "system-ui, sans-serif",
-        maxWidth: 700,
-      }}
-    >
-      <h1 style={{ fontSize: 24, fontWeight: 700 }}>
+    <div className="p-5 font-sans max-w-2xl mx-auto bg-white dark:bg-gray-900 text-black dark:text-white">
+      <h1 className="text-2xl font-bold">
         {pool?.name || "Golf Pool"}
       </h1>
 
-      <div style={{ marginTop: 8, fontWeight: 600 }}>
-        Status: <span style={{ color: statusColor(status) }}>{status}</span>
+      <div className="mt-2 font-semibold">
+        Status: <span className={statusColor(status)}>{status}</span>
       </div>
 
       {pool && entryCost > 0 && (
-        <div style={{ marginTop: 12 }}>
+        <div className="mt-3">
           <div>
             <strong>Entry Cost:</strong> ${entryCost}
           </div>
@@ -365,59 +351,52 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
         </div>
       )}
 
-      <div style={{ marginTop: 10 }}>
+      <div className="mt-2.5">
         <div>🥇 1st: ${payout.first.toFixed(0)}</div>
         <div>🥈 2nd: ${payout.second.toFixed(0)}</div>
         <div>🥉 3rd: ${payout.third.toFixed(0)}</div>
       </div>
 
       {pool && (
-        <div style={{ marginTop: 6, opacity: 0.8 }}>
+        <div className="mt-1.5 opacity-80 text-sm">
           Entries close at: {new Date(pool.entriesCloseAt).toLocaleString()}
         </div>
       )}
 
       {pool && !isEditable && (
-        <div
-          style={{
-            marginTop: 12,
-            padding: 10,
-            background: "#ffe5e5",
-            borderRadius: 6,
-            fontWeight: 600,
-          }}
-        >
+        <div className="mt-3 p-2.5 bg-red-100 dark:bg-red-900 rounded-md font-semibold text-red-800 dark:text-red-200">
           {status === "Closed" && "Entries are now closed."}
           {status === "Locked" && "This pool has been locked."}
           {status === "Final" && "This pool is complete."}
         </div>
       )}
-      <div style={{ marginTop: 20 }}>
-        <h3>Edit Existing Entry</h3>
+
+      <div className="mt-5">
+        <h3 className="text-lg font-bold">Edit Existing Entry</h3>
 
         <input
           value={editEmail}
           onChange={(e) => setEditEmail(e.target.value)}
           placeholder="Enter your email"
-          style={{ width: "100%", padding: 8, marginTop: 8 }}
+          className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-black dark:text-white"
         />
 
         <button
           onClick={findEntriesByEmail}
           disabled={!isEditable}
-          style={{ marginTop: 8, padding: "6px 10px" }}
+          className="mt-2 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Find My Entries
         </button>
 
         {foundEntries.length > 0 && (
-          <ul style={{ marginTop: 10 }}>
+          <ul className="mt-2.5 space-y-1">
             {foundEntries.map((e) => (
               <li key={e.id}>
                 <button
                   onClick={() => loadEntry(e.id)}
                   disabled={!isEditable}
-                  style={{ cursor: "pointer" }}
+                  className="text-blue-500 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {e.entryName} – {new Date(e.createdAt).toLocaleString()}
                 </button>
@@ -427,15 +406,15 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
         )}
       </div>
 
-      <div style={{ marginTop: 20 }}>
-        <h3>Submit Entry</h3>
+      <div className="mt-5">
+        <h3 className="text-lg font-bold">Submit Entry</h3>
 
         <input
           disabled={!isEditable}
           value={entryName}
           onChange={(e) => setEntryName(e.target.value)}
           placeholder="Your Name"
-          style={{ width: "100%", padding: 8, marginTop: 8 }}
+          className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-black dark:text-white disabled:opacity-50"
         />
 
         <input
@@ -443,7 +422,7 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email"
-          style={{ width: "100%", padding: 8, marginTop: 8 }}
+          className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-black dark:text-white disabled:opacity-50"
         />
 
         <input
@@ -451,7 +430,7 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
           value={passcode}
           onChange={(e) => setPasscode(e.target.value)}
           placeholder="Code word (to edit later)"
-          style={{ width: "100%", padding: 8, marginTop: 8 }}
+          className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-black dark:text-white disabled:opacity-50"
         />
 
         <datalist id="golfer-list">
@@ -461,7 +440,7 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
         </datalist>
 
         {golfersInfo && (
-          <div style={{ marginTop: 10, fontSize: 13, opacity: 0.75 }}>
+          <div className="mt-2.5 text-xs opacity-75">
             Golfer list: {golfersInfo.count} players
             {golfersInfo.snapshotFetchedAt
               ? ` (from snapshot ${new Date(golfersInfo.snapshotFetchedAt).toLocaleString()})`
@@ -470,7 +449,7 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
         )}
 
         {picks.map((pick, i) => (
-          <div key={i} style={{ marginTop: 8 }}>
+          <div key={i} className="mt-2">
             <input
               disabled={!isEditable}
               value={pick}
@@ -478,10 +457,10 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
               onBlur={() => autocorrectPick(i)}
               placeholder={`Rank ${i + 1} golfer`}
               list="golfer-list"
-              style={{ width: "100%", padding: 8 }}
+              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-black dark:text-white disabled:opacity-50"
             />
             {autoFillMsg[i] && (
-              <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
+              <div className="text-xs opacity-75 mt-1">
                 {autoFillMsg[i]}
               </div>
             )}
@@ -489,27 +468,18 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
         ))}
 
         {golfers.length > 0 && unmatched.length > 0 && (
-          <div
-            style={{
-              marginTop: 12,
-              padding: 10,
-              border: "1px solid #f0c36d",
-              borderRadius: 6,
-              background: "rgba(240,195,109,0.15)",
-              fontSize: 13,
-            }}
-          >
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>
-              Some picks don’t match the tournament field:
+          <div className="mt-3 p-2.5 border border-amber-400 dark:border-amber-600 rounded bg-amber-50 dark:bg-amber-900 dark:bg-opacity-30 text-sm">
+            <div className="font-semibold mb-1.5">
+              Some picks don't match the tournament field:
             </div>
-            <ul style={{ margin: 0, paddingLeft: 18 }}>
+            <ul className="m-0 pl-4.5 space-y-0.5">
               {unmatched.map((u) => (
                 <li key={u.idx}>
-                  Rank {u.idx + 1}: “{u.raw}”
+                  Rank {u.idx + 1}: "{u.raw}"
                 </li>
               ))}
             </ul>
-            <div style={{ marginTop: 6, opacity: 0.85 }}>
+            <div className="mt-1.5 opacity-85">
               Tip: click into the field and choose a name from the dropdown.
             </div>
           </div>
@@ -518,12 +488,7 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
         <button
           onClick={submitEntry}
           disabled={disableSubmit || !isEditable}
-          style={{
-            marginTop: 12,
-            padding: "10px 14px",
-            cursor: disableSubmit ? "not-allowed" : "pointer",
-            opacity: disableSubmit ? 0.5 : 1,
-          }}
+          className="mt-3 px-3.5 py-2.5 bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
         >
           {loading
             ? "Saving..."
@@ -533,19 +498,19 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
         </button>
 
         {message && (
-          <div style={{ marginTop: 8 }}>
-            <strong>{message}</strong>
+          <div className="mt-2">
+            <strong className="text-blue-600 dark:text-blue-400">{message}</strong>
           </div>
         )}
       </div>
 
-      <div style={{ marginTop: 30 }}>
-        <h3>Current Entries</h3>
+      <div className="mt-7.5">
+        <h3 className="text-lg font-bold">Current Entries</h3>
 
         {entries.length === 0 ? (
-          <div style={{ opacity: 0.7 }}>No entries yet.</div>
+          <div className="opacity-70">No entries yet.</div>
         ) : (
-          <ul>
+          <ul className="mt-2 space-y-1">
             {entries.map((e) => (
               <li key={e.id}>
                 {e.entryName} {e.isPaid ? "✓ Paid" : ""}

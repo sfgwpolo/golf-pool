@@ -25,7 +25,7 @@ export default function AdminHomeClient() {
   const [newPoolOrgId, setNewPoolOrgId] = useState("");
   const [newPoolName, setNewPoolName] = useState("");
   const [newPoolYear, setNewPoolYear] = useState(
-    String(new Date().getFullYear()),
+    String(new Date().getFullYear())
   );
   const [newTournamentKey, setNewTournamentKey] = useState("");
   const [newStartsAt, setNewStartsAt] = useState("");
@@ -91,7 +91,6 @@ export default function AdminHomeClient() {
       setMe(meData.me);
       setOrgs(meData.organizations || []);
 
-      // Load pools for each org
       const orgList: Org[] = meData.organizations || [];
       const results = await Promise.all(
         orgList.map(async (o) => {
@@ -101,10 +100,10 @@ export default function AdminHomeClient() {
           const data = await res.json();
           if (!res.ok)
             throw new Error(
-              data?.error || `Failed to load pools for ${o.name}`,
+              data?.error || `Failed to load pools for ${o.name}`
             );
           return [o.id, data.pools || []] as const;
-        }),
+        })
       );
 
       const map: Record<string, Pool[]> = {};
@@ -122,43 +121,32 @@ export default function AdminHomeClient() {
   }, []);
 
   return (
-    <div style={{ maxWidth: 900 }}>
-      <h1 style={{ fontSize: 24, fontWeight: 800 }}>Admin Home</h1>
+    <div className="max-w-4xl mx-auto bg-white dark:bg-gray-900 text-black dark:text-white">
+      <h1 className="text-2xl font-bold">Admin Home</h1>
 
-      <div
-        style={{ display: "flex", justifyContent: "space-between", gap: 12 }}
-      >
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <button
-            onClick={load}
-            disabled={loading}
-            style={{ padding: "8px 12px" }}
-          >
-            {loading ? "Refreshing…" : "Refresh"}
-          </button>
-        </div>
+      <div className="flex justify-between gap-3 items-center flex-wrap mt-4">
+        <button
+          onClick={load}
+          disabled={loading}
+          className="px-3 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? "Refreshing…" : "Refresh"}
+        </button>
       </div>
 
       {msg && (
-        <div style={{ marginTop: 12, color: "crimson" }}>
-          <strong>{msg}</strong>
+        <div className="mt-3 text-red-600 dark:text-red-400 font-semibold">
+          {msg}
         </div>
       )}
 
-      <div
-        style={{
-          marginTop: 16,
-          padding: 12,
-          border: "1px solid #ddd",
-          borderRadius: 8,
-        }}
-      >
-        <div style={{ fontSize: 16, fontWeight: 700 }}>Create pool</div>
+      <div className="mt-4 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800">
+        <div className="text-lg font-bold">Create pool</div>
 
         <select
           value={newPoolOrgId}
           onChange={(e) => setNewPoolOrgId(e.target.value)}
-          style={{ width: "100%", padding: 8, marginTop: 10 }}
+          className="w-full p-2 mt-2.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
         >
           <option value="">Select organization…</option>
           {orgs.map((o) => (
@@ -172,51 +160,45 @@ export default function AdminHomeClient() {
           value={newPoolName}
           onChange={(e) => setNewPoolName(e.target.value)}
           placeholder="Pool name"
-          style={{ width: "100%", padding: 8, marginTop: 8 }}
+          className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
         />
 
         <input
           value={newPoolYear}
           onChange={(e) => setNewPoolYear(e.target.value)}
           placeholder="Year"
-          style={{ width: "100%", padding: 8, marginTop: 8 }}
+          className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
         />
 
         <input
           value={newTournamentKey}
           onChange={(e) => setNewTournamentKey(e.target.value)}
-          placeholder='Tournament key (e.g. "current" or your current source key)'
-          style={{ width: "100%", padding: 8, marginTop: 8 }}
+          placeholder="Tournament key (e.g. current)"
+          className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
         />
 
-        <div style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>
-          Starts at
-        </div>
+        <div className="mt-2 text-xs opacity-80">Starts at</div>
         <input
           type="datetime-local"
           value={newStartsAt}
           onChange={(e) => setNewStartsAt(e.target.value)}
-          style={{ width: "100%", padding: 8, marginTop: 4 }}
+          className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
         />
 
-        <div style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>
-          Entries close at
-        </div>
+        <div className="mt-2 text-xs opacity-80">Entries close at</div>
         <input
           type="datetime-local"
           value={newEntriesCloseAt}
           onChange={(e) => setNewEntriesCloseAt(e.target.value)}
-          style={{ width: "100%", padding: 8, marginTop: 4 }}
+          className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
         />
 
-        <div style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>
-          Ended at (optional)
-        </div>
+        <div className="mt-2 text-xs opacity-80">Ended at (optional)</div>
         <input
           type="datetime-local"
           value={newEndedAt}
           onChange={(e) => setNewEndedAt(e.target.value)}
-          style={{ width: "100%", padding: 8, marginTop: 4 }}
+          className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
         />
 
         <textarea
@@ -224,21 +206,21 @@ export default function AdminHomeClient() {
           onChange={(e) => setNewRulesText(e.target.value)}
           placeholder="Rules text"
           rows={4}
-          style={{ width: "100%", padding: 8, marginTop: 8 }}
+          className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
         />
 
         <input
           value={newEntryCost}
           onChange={(e) => setNewEntryCost(e.target.value)}
           placeholder="Entry cost"
-          style={{ width: "100%", padding: 8, marginTop: 8 }}
+          className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
         />
 
         <input
           value={newPayoutText}
           onChange={(e) => setNewPayoutText(e.target.value)}
           placeholder="Payout text"
-          style={{ width: "100%", padding: 8, marginTop: 8 }}
+          className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
         />
 
         <button
@@ -251,46 +233,41 @@ export default function AdminHomeClient() {
             !newStartsAt ||
             !newEntriesCloseAt
           }
-          style={{ marginTop: 10, padding: "8px 12px" }}
+          className="mt-2.5 px-3 py-2 bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
         >
           Create pool
         </button>
       </div>
 
-      <div style={{ marginTop: 16 }}>
+      <div className="mt-4">
         {orgs.length === 0 ? (
-          <div style={{ opacity: 0.7 }}>No organizations available.</div>
+          <div className="opacity-70">No organizations available.</div>
         ) : (
           orgs.map((o) => (
             <div
               key={o.id}
-              style={{
-                marginTop: 12,
-                padding: 12,
-                border: "1px solid #ddd",
-                borderRadius: 8,
-              }}
+              className="mt-3 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800"
             >
-              <div style={{ fontSize: 18, fontWeight: 800 }}>
+              <div className="text-lg font-bold">
                 {o.name}{" "}
-                <span style={{ opacity: 0.6, fontSize: 13 }}>({o.slug})</span>
+                <span className="opacity-60 text-xs">({o.slug})</span>
               </div>
 
-              <div style={{ marginTop: 8, fontWeight: 700 }}>Pools</div>
+              <div className="mt-2 font-bold">Pools</div>
 
               {(poolsByOrg[o.id] || []).length === 0 ? (
-                <div style={{ marginTop: 6, opacity: 0.7 }}>No pools yet.</div>
+                <div className="mt-1.5 opacity-70">No pools yet.</div>
               ) : (
-                <ul style={{ marginTop: 6 }}>
+                <ul className="mt-1.5 space-y-1">
                   {(poolsByOrg[o.id] || []).map((p) => (
-                    <li key={p.id} style={{ marginTop: 6 }}>
+                    <li key={p.id} className="text-sm">
                       <a
                         href={`/admin/pools/${p.id}`}
-                        style={{ fontWeight: 700 }}
+                        className="font-bold text-blue-600 dark:text-blue-400 hover:underline"
                       >
                         {p.year} — {p.name}
                       </a>{" "}
-                      <span style={{ opacity: 0.75 }}>
+                      <span className="opacity-75 text-xs">
                         • locked: {p.locked ? "yes" : "no"} • entries close:{" "}
                         {new Date(p.entriesCloseAt).toLocaleString()}
                       </span>

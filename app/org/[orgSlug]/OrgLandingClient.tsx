@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getPoolStatus } from "../../../lib/poolStatus";
+import Link from "next/link"; // Add for better navigation
 
 type Org = {
   id: string;
@@ -46,113 +47,69 @@ function PoolCard({
   const status = getPoolStatus(pool);
 
   return (
-    <div
-      style={{
-        marginTop: 12,
-        padding: 16,
-        border: "1px solid #ddd",
-        borderRadius: 10,
-        background: featured ? "#fafafa" : "white",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
+    <div className={`mt-3 p-4 border rounded-lg ${featured ? 'bg-gray-50 dark:bg-gray-800' : 'bg-white dark:bg-gray-900'} border-gray-300 dark:border-gray-600`}>
+      <div className="flex justify-between gap-3 flex-wrap">
         <div>
-          <div style={{ fontSize: featured ? 22 : 18, fontWeight: 800 }}>
+          <div className={`font-bold ${featured ? 'text-2xl' : 'text-xl'}`}>
             {pool.year} — {pool.name}
           </div>
-
-          <div style={{ marginTop: 8, fontSize: 14, opacity: 0.8 }}>
+          <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             Starts: {new Date(pool.startsAt).toLocaleString()}
           </div>
-
-          <div style={{ marginTop: 4, fontSize: 14, opacity: 0.8 }}>
+          <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
             Entries close: {new Date(pool.entriesCloseAt).toLocaleString()}
           </div>
-
           {pool.endedAt && (
-            <div style={{ marginTop: 4, fontSize: 14, opacity: 0.8 }}>
+            <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
               Ends: {new Date(pool.endedAt).toLocaleString()}
             </div>
           )}
         </div>
-
-        <div style={{ alignSelf: "flex-start" }}>
-          <span
-            style={{
-              display: "inline-block",
-              padding: "4px 8px",
-              borderRadius: 999,
-              border: "1px solid #ccc",
-              fontSize: 12,
-              fontWeight: 700,
-              opacity: 0.85,
-            }}
-          >
+        <div className="self-start">
+          <span className="inline-block px-2 py-1 rounded-full border border-gray-400 dark:border-gray-500 text-xs font-bold opacity-85">
             {pool.status.toUpperCase()}
           </span>
         </div>
       </div>
 
       {pool.entryCost && (
-        <div style={{ marginTop: 12 }}>
+        <div className="mt-3">
           <strong>Entry cost:</strong> ${pool.entryCost}
         </div>
       )}
 
       {pool.payoutText && (
-        <div style={{ marginTop: 8 }}>
+        <div className="mt-2">
           <strong>Payout:</strong> {pool.payoutText}
         </div>
       )}
 
       {pool.rulesText && (
-        <div style={{ marginTop: 8 }}>
+        <div className="mt-2">
           <strong>Rules:</strong>
-          <div style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>
+          <div className="mt-1 whitespace-pre-wrap">
             {pool.rulesText}
           </div>
         </div>
       )}
 
-      <div style={{ marginTop: 10, fontSize: 13, opacity: 0.8 }}>
+      <div className="mt-2.5 text-sm text-gray-600 dark:text-gray-400">
         Status: <strong>{status}</strong>
       </div>
 
-      <div
-        style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}
-      >
-        <a
+      <div className="flex gap-2.5 mt-3.5 flex-wrap">
+        <Link
           href={`/pool/${pool.id}?org=${orgSlug}`}
-          style={{
-            padding: "8px 12px",
-            border: "1px solid #ccc",
-            borderRadius: 6,
-            textDecoration: "none",
-            color: "inherit",
-          }}
+          className="px-3 py-2 border border-gray-400 dark:border-gray-500 rounded-md text-inherit no-underline hover:bg-gray-100 dark:hover:bg-gray-700"
         >
           Create / Edit Entry
-        </a>
-
-        <a
+        </Link>
+        <Link
           href={`/leaderboard/${pool.id}?org=${orgSlug}`}
-          style={{
-            padding: "8px 12px",
-            border: "1px solid #ccc",
-            borderRadius: 6,
-            textDecoration: "none",
-            color: "inherit",
-          }}
+          className="px-3 py-2 border border-gray-400 dark:border-gray-500 rounded-md text-inherit no-underline hover:bg-gray-100 dark:hover:bg-gray-700"
         >
           View Leaderboard
-        </a>
+        </Link>
       </div>
     </div>
   );
@@ -185,61 +142,38 @@ export default function OrgLandingClient({ orgSlug }: { orgSlug: string }) {
 
   if (err) {
     return (
-      <div style={{ padding: 20, fontFamily: "system-ui, sans-serif" }}>
-        <strong style={{ color: "crimson" }}>{err}</strong>
+      <div className="p-5 font-sans">
+        <strong className="text-red-600 dark:text-red-400">{err}</strong>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div style={{ padding: 20, fontFamily: "system-ui, sans-serif" }}>
+      <div className="p-5 font-sans">
         Loading...
       </div>
     );
   }
 
-  const { organization, defaultPool, activePools, upcomingPools, pastPools } =
-    data;
+  const { organization, defaultPool, activePools, upcomingPools, pastPools } = data;
 
   return (
-    <div
-      style={{
-        padding: 20,
-        fontFamily: "system-ui, sans-serif",
-        maxWidth: 960,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          gap: 16,
-          alignItems: "center",
-          flexWrap: "wrap",
-        }}
-      >
+    <div className="p-5 font-sans max-w-4xl mx-auto bg-white dark:bg-gray-900 text-black dark:text-white">
+      <div className="flex gap-4 items-center flex-wrap">
         {organization.emblemUrl ? (
           <img
             src={organization.emblemUrl}
             alt={`${organization.name} emblem`}
-            style={{
-              width: 72,
-              height: 72,
-              objectFit: "contain",
-              borderRadius: 8,
-              border: "1px solid #eee",
-              padding: 4,
-              background: "white",
-            }}
+            className="w-18 h-18 object-contain rounded-md border border-gray-300 dark:border-gray-600 p-1 bg-white dark:bg-gray-800"
           />
         ) : null}
-
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>
+          <h1 className="text-3xl font-bold m-0">
             {organization.name}
           </h1>
           {organization.description && (
-            <div style={{ marginTop: 6, opacity: 0.8 }}>
+            <div className="mt-1.5 opacity-80">
               {organization.description}
             </div>
           )}
@@ -247,15 +181,15 @@ export default function OrgLandingClient({ orgSlug }: { orgSlug: string }) {
       </div>
 
       {defaultPool && (
-        <div style={{ marginTop: 24 }}>
-          <div style={{ fontSize: 20, fontWeight: 800 }}>Featured Pool</div>
+        <div className="mt-6">
+          <div className="text-xl font-bold">Featured Pool</div>
           <PoolCard pool={defaultPool} orgSlug={organization.slug} featured />
         </div>
       )}
 
       {activePools.length > 0 && (
-        <div style={{ marginTop: 28 }}>
-          <div style={{ fontSize: 20, fontWeight: 800 }}>Active Pools</div>
+        <div className="mt-7">
+          <div className="text-xl font-bold">Active Pools</div>
           {activePools.map((pool) => (
             <PoolCard key={pool.id} pool={pool} orgSlug={organization.slug} />
           ))}
@@ -263,8 +197,8 @@ export default function OrgLandingClient({ orgSlug }: { orgSlug: string }) {
       )}
 
       {upcomingPools.length > 0 && (
-        <div style={{ marginTop: 28 }}>
-          <div style={{ fontSize: 20, fontWeight: 800 }}>Upcoming Pools</div>
+        <div className="mt-7">
+          <div className="text-xl font-bold">Upcoming Pools</div>
           {upcomingPools.map((pool) => (
             <PoolCard key={pool.id} pool={pool} orgSlug={organization.slug} />
           ))}
@@ -272,22 +206,19 @@ export default function OrgLandingClient({ orgSlug }: { orgSlug: string }) {
       )}
 
       {pastPools.length > 0 && (
-        <div style={{ marginTop: 28 }}>
-          <div style={{ fontSize: 20, fontWeight: 800 }}>Past Pools</div>
+        <div className="mt-7">
+          <div className="text-xl font-bold">Past Pools</div>
           {pastPools.map((pool) => (
             <PoolCard key={pool.id} pool={pool} orgSlug={organization.slug} />
           ))}
         </div>
       )}
 
-      {!defaultPool &&
-        activePools.length === 0 &&
-        upcomingPools.length === 0 &&
-        pastPools.length === 0 && (
-          <div style={{ marginTop: 24, opacity: 0.75 }}>
-            No pools available yet.
-          </div>
-        )}
+      {!defaultPool && activePools.length === 0 && upcomingPools.length === 0 && pastPools.length === 0 && (
+        <div className="mt-6 opacity-75">
+          No pools available yet.
+        </div>
+      )}
     </div>
   );
 }
