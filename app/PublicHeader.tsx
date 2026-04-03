@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ThemeToggle from "./components/ThemeToggle";
 
 type PublicHeaderProps = {
   backHref?: string;
@@ -10,19 +11,12 @@ export default function PublicHeader({
   backLabel = "Back",
 }: PublicHeaderProps) {
   return (
-    <div
-      style={{
-        display: "flex",
-        gap: 12,
-        alignItems: "center",
-        marginBottom: 16,
-        paddingBottom: 12,
-        borderBottom: "1px solid #ddd",
-        flexWrap: "wrap",
-      }}
-    >
-      <Link href="/" >Home</Link>
-      {backHref ? <Link href={backHref}>{backLabel}</Link> : null}
+    <div className="flex gap-3 items-center mb-4 pb-3 border-b border-gray-300 dark:border-gray-600 flex-wrap justify-between">
+      <div className="flex gap-3 flex-wrap items-center">
+        <Link href="/" className="hover:underline">Home</Link>
+        {backHref ? <Link href={backHref} className="hover:underline">{backLabel}</Link> : null}
+      </div>
+      <ThemeToggle />
     </div>
   );
 }

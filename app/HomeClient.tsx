@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchJson } from "../lib/http";
+import Link from "next/link"; // Add this import
 
 type Org = {
   id: string;
@@ -36,60 +37,29 @@ export default function HomeClient() {
 
   if (err) {
     return (
-      <div style={{ padding: 20, fontFamily: "system-ui, sans-serif" }}>
-        <strong style={{ color: "crimson" }}>{err}</strong>
+      <div className="p-5 font-sans">
+        <strong className="text-red-600 dark:text-red-400">{err}</strong>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: 20, fontFamily: "system-ui, sans-serif", maxWidth: 960 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 800 }}>Golf Pool</h1>
-
-      <div style={{ marginTop: 20 }}>
+    <div className="p-5 font-sans max-w-4xl mx-auto bg-white dark:bg-gray-900 text-black dark:text-white">
+      <h1 className="text-3xl font-bold">Golf Pool</h1>
+      <div className="mt-5">
         {orgs.length === 0 ? (
-          <div style={{ opacity: 0.75 }}>No organizations available yet.</div>
+          <p className="text-gray-600 dark:text-gray-400">No organizations available.</p>
         ) : (
-          orgs.map((org) => (
-            <a
-              key={org.id}
-              href={`/org/${org.slug}`}
-              style={{
-                display: "block",
-                marginTop: 12,
-                padding: 16,
-                border: "1px solid #ddd",
-                borderRadius: 10,
-                color: "inherit",
-                textDecoration: "none",
-              }}
-            >
-              <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-                {org.emblemUrl ? (
-                  <img
-                    src={org.emblemUrl}
-                    alt={`${org.name} emblem`}
-                    style={{
-                      width: 56,
-                      height: 56,
-                      objectFit: "contain",
-                      borderRadius: 8,
-                      border: "1px solid #eee",
-                      padding: 4,
-                      background: "white",
-                    }}
-                  />
-                ) : null}
-
-                <div>
-                  <div style={{ fontSize: 20, fontWeight: 800 }}>{org.name}</div>
-                  {org.description && (
-                    <div style={{ marginTop: 4, opacity: 0.8 }}>{org.description}</div>
-                  )}
-                </div>
-              </div>
-            </a>
-          ))
+          <ul className="space-y-4">
+            {orgs.map(org => (
+              <Link key={org.id} href={`/org/${org.slug}`}>
+                <li className="p-4 border rounded bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <h2 className="text-xl font-semibold">{org.name}</h2>
+                  {org.description && <p className="text-gray-700 dark:text-gray-300">{org.description}</p>}
+                </li>
+              </Link>
+            ))}
+          </ul>
         )}
       </div>
     </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { fetchJson } from "../../lib/http";
+import ThemeToggle from "../components/ThemeToggle";
 
 type MeResponse = {
   me: {
@@ -46,42 +47,25 @@ export default function AdminHeader() {
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        gap: 12,
-        alignItems: "center",
-        flexWrap: "wrap",
-        marginBottom: 16,
-        paddingBottom: 12,
-        borderBottom: "1px solid #ddd",
-      }}
-    >
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        <a href="/admin">Admin Home</a>
-        {me?.role === "SUPER_ADMIN" && (
-          <a href="/admin/organizations">Organizations & Admins</a>
-        )}
+    <div className="flex justify-between gap-3 items-center flex-wrap mb-4 pb-3 border-b border-gray-300 dark:border-gray-600">
+      <div className="flex gap-3 flex-wrap items-center">
+        <a href="/admin" className="hover:underline">Admin Home</a>
+        <a href="/admin/organizations" className="hover:underline">Organizations & Admins</a>
       </div>
 
-      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+      <div className="flex gap-3 items-center flex-wrap">
         {me && (
-          <div style={{ fontSize: 13, opacity: 0.8 }}>
+          <div className="text-xs opacity-80">
             Signed in as <strong>{me.email}</strong> ({me.role})
           </div>
         )}
         <button
           onClick={logout}
-          style={{
-            padding: "6px 10px",
-            border: "1px solid #ccc",
-            borderRadius: 6,
-            cursor: "pointer",
-          }}
+          className="px-2.5 py-1.5 border border-gray-400 dark:border-gray-500 rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
         >
           Logout
         </button>
+        <ThemeToggle />
       </div>
     </div>
   );

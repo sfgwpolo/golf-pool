@@ -42,39 +42,34 @@ export default function AdminLoginForm() {
   }
 
   return (
-    <div style={{ padding: 20, fontFamily: "system-ui, sans-serif", maxWidth: 420 }}>
-      <h1 style={{ fontSize: 24, fontWeight: 800 }}>Admin Login</h1>
+    <div className="p-5 font-sans max-w-md bg-white dark:bg-gray-900 text-black dark:text-white mx-auto">
+      <h1 className="text-2xl font-bold">Admin Login</h1>
 
-      <div style={{ marginTop: 12 }}>
+      <div className="mt-3">
         <input
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email"
-          style={{ width: "100%", padding: 10, marginTop: 8 }}
+          className="w-full p-2.5 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-black dark:text-white"
         />
         <input
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Password"
           type="password"
-          style={{ width: "100%", padding: 10, marginTop: 8 }}
+          className="w-full p-2.5 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-black dark:text-white"
         />
 
         <button
           onClick={login}
           disabled={loading || !email.trim() || password.length < 6}
-          style={{
-            marginTop: 12,
-            padding: "10px 14px",
-            cursor: loading || !email.trim() || password.length < 6 ? "not-allowed" : "pointer",
-            opacity: loading || !email.trim() || password.length < 6 ? 0.5 : 1,
-          }}
+          className="mt-3 px-3.5 py-2.5 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
         >
           {loading ? "Signing in..." : "Sign in"}
         </button>
 
         {msg && (
-          <div style={{ marginTop: 10, color: "crimson" }}>
+          <div className="mt-2.5 text-red-600 dark:text-red-400">
             <strong>{msg}</strong>
           </div>
         )}
