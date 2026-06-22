@@ -607,26 +607,35 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
           <div className="mt-4 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900">
             <div className="font-bold">Edit pool data</div>
 
-            <input
-              value={poolName}
-              onChange={(e) => setPoolName(e.target.value)}
-              placeholder="Pool name"
-              className="w-full p-2 mt-2.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
-            />
+            <label className="block mt-2.5">
+              <span className="text-xs opacity-80">Pool name</span>
+              <input
+                value={poolName}
+                onChange={(e) => setPoolName(e.target.value)}
+                placeholder="Pool name"
+                className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
+              />
+            </label>
 
-            <input
-              value={poolYear}
-              onChange={(e) => setPoolYear(e.target.value)}
-              placeholder="Year"
-              className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
-            />
+            <label className="block mt-2">
+              <span className="text-xs opacity-80">Year</span>
+              <input
+                value={poolYear}
+                onChange={(e) => setPoolYear(e.target.value)}
+                placeholder="Year"
+                className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
+              />
+            </label>
 
-            <input
-              value={poolTournamentKey}
-              onChange={(e) => setPoolTournamentKey(e.target.value)}
-              placeholder="Tournament key (e.g. R2026005)"
-              className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
-            />
+            <label className="block mt-2">
+              <span className="text-xs opacity-80">Tournament key</span>
+              <input
+                value={poolTournamentKey}
+                onChange={(e) => setPoolTournamentKey(e.target.value)}
+                placeholder="Tournament key (e.g. R2026005)"
+                className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
+              />
+            </label>
 
             <div className="mt-2 text-xs opacity-80">Starts at</div>
             <input
@@ -652,27 +661,36 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
               className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
             />
 
-            <textarea
-              value={rulesText}
-              onChange={(e) => setRulesText(e.target.value)}
-              placeholder="Rules text"
-              rows={5}
-              className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
-            />
+            <label className="block mt-2">
+              <span className="text-xs opacity-80">Rules text</span>
+              <textarea
+                value={rulesText}
+                onChange={(e) => setRulesText(e.target.value)}
+                placeholder="Rules text"
+                rows={5}
+                className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
+              />
+            </label>
 
-            <input
-              value={entryCost}
-              onChange={(e) => setEntryCost(e.target.value)}
-              placeholder="Entry cost (e.g. 25)"
-              className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
-            />
+            <label className="block mt-2">
+              <span className="text-xs opacity-80">Entry cost</span>
+              <input
+                value={entryCost}
+                onChange={(e) => setEntryCost(e.target.value)}
+                placeholder="Entry cost (e.g. 25)"
+                className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
+              />
+            </label>
 
-            <input
-              value={payoutText}
-              onChange={(e) => setPayoutText(e.target.value)}
-              placeholder="Payout text (e.g. 1st: 50%, 2nd: 30%, 3rd: 20%)"
-              className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
-            />
+            <label className="block mt-2">
+              <span className="text-xs opacity-80">Payout text</span>
+              <input
+                value={payoutText}
+                onChange={(e) => setPayoutText(e.target.value)}
+                placeholder="Payout text (e.g. 1st: 50%, 2nd: 30%, 3rd: 20%)"
+                className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
+              />
+            </label>
 
             <div className="mt-2 text-xs opacity-80">Scoring weights JSON</div>
             <textarea
