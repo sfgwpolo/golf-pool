@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import FormattedRulesText from "../../../components/FormattedRulesText";
 
 type EntryPick = {
   id: string;
@@ -80,6 +81,7 @@ function formatJsonForTextarea(value: unknown) {
 }
 
 export default function AdminPoolClient({ poolId }: { poolId: string }) {
+  const rulesTextRef = useRef<HTMLTextAreaElement | null>(null);
   const [pool, setPool] = useState<PoolInfo | null>(null);
   const [entries, setEntries] = useState<EntryRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -145,6 +147,62 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
     setEndedAt("");
     setIsArchived(false);
     setPoolMsg("Display fields cleared. Save to apply.");
+  }
+
+  function wrapRulesSelection(prefix: string, suffix = prefix) {
+    const textarea = rulesTextRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = rulesText.slice(start, end);
+    const fallback = selected || "text";
+    const next =
+      rulesText.slice(0, start) +
+      prefix +
+      fallback +
+      suffix +
+      rulesText.slice(end);
+
+    setRulesText(next);
+    window.requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + prefix.length, start + prefix.length + fallback.length);
+    });
+  }
+
+  function insertRulesBlock(value: string) {
+    const textarea = rulesTextRef.current;
+    const insertion = rulesText.trim() ? `\n${value}` : value.trimStart();
+
+    if (!textarea) {
+      setRulesText((current) => current + insertion);
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const next = rulesText.slice(0, start) + insertion + rulesText.slice(end);
+
+    setRulesText(next);
+    window.requestAnimationFrame(() => {
+      const cursor = start + insertion.length;
+      textarea.focus();
+      textarea.setSelectionRange(cursor, cursor);
+    });
+  }
+
+  function insertRulesLink() {
+    const url = window.prompt("Link URL");
+    if (!url) return;
+    wrapRulesSelection("[", `](${url.trim()})`);
+  }
+
+  function insertRulesImage() {
+    const url = window.prompt("Image URL");
+    if (!url) return;
+    const alt = window.prompt("Image description", "Rules image") || "Rules image";
+    insertRulesBlock(`\n![${alt.trim()}](${url.trim()})\n`);
   }
 
   function getErrorMessageFromJson(data: unknown): string | null {
@@ -663,14 +721,65 @@ export default function AdminPoolClient({ poolId }: { poolId: string }) {
 
             <label className="block mt-2">
               <span className="text-xs opacity-80">Rules text</span>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => wrapRulesSelection("**")}
+                  className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  Bold
+                </button>
+                <button
+                  type="button"
+                  onClick={() => wrapRulesSelection("*")}
+                  className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  Italic
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertRulesBlock("\n## Heading\n")}
+                  className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  Heading
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertRulesBlock("\n- List item\n")}
+                  className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  List
+                </button>
+                <button
+                  type="button"
+                  onClick={insertRulesLink}
+                  className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  Link
+                </button>
+                <button
+                  type="button"
+                  onClick={insertRulesImage}
+                  className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  Image
+                </button>
+              </div>
               <textarea
+                ref={rulesTextRef}
                 value={rulesText}
                 onChange={(e) => setRulesText(e.target.value)}
-                placeholder="Rules text"
-                rows={5}
+                placeholder="Rules text. Use the buttons above for formatting and images."
+                rows={8}
                 className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-black dark:text-white"
               />
             </label>
+            {rulesText.trim() && (
+              <div className="mt-2 p-3 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-800">
+                <div className="text-xs font-semibold opacity-80 mb-2">Rules preview</div>
+                <FormattedRulesText text={rulesText} />
+              </div>
+            )}
 
             <label className="block mt-2">
               <span className="text-xs opacity-80">Entry cost</span>

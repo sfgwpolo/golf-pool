@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getPoolStatus } from "../../../lib/poolStatus";
 import Link from "next/link"; // Add for better navigation
+import FormattedRulesText from "../../components/FormattedRulesText";
 
 type Org = {
   id: string;
@@ -87,8 +88,8 @@ function PoolCard({
       {pool.rulesText && (
         <div className="mt-2">
           <strong>Rules:</strong>
-          <div className="mt-1 whitespace-pre-wrap">
-            {pool.rulesText}
+          <div className="mt-1">
+            <FormattedRulesText text={pool.rulesText} />
           </div>
         </div>
       )}

@@ -13,6 +13,7 @@ export async function GET(
       id: true,
       name: true,
       entryCost: true,
+      rulesText: true,
       startsAt: true,
       entriesCloseAt: true,
       locked: true,

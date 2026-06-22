@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getPoolStatus } from "../../../lib/poolStatus";
+import FormattedRulesText from "../../components/FormattedRulesText";
 
 type EntrySummary = {
   id: string;
@@ -14,6 +15,7 @@ type PoolInfo = {
   id: string;
   name: string;
   entryCost: string | null;
+  rulesText: string | null;
   entriesCloseAt: string;
   startsAt: string;
   locked?: boolean;
@@ -22,6 +24,11 @@ type PoolInfo = {
 };
 
 type Golfer = { golferId: string; golferName: string };
+
+type EntryPick = {
+  rank: number;
+  golferName: string;
+};
 
 export default function PublicPoolClient({ poolId }: { poolId: string }) {
   const [pool, setPool] = useState<PoolInfo | null>(null);
@@ -308,8 +315,8 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
       setEmail(data.entry.email);
       setPicks(
         data.entry.picks
-          .sort((a: any, b: any) => a.rank - b.rank)
-          .map((p: any) => p.golferName)
+          .sort((a: EntryPick, b: EntryPick) => a.rank - b.rank)
+          .map((p: EntryPick) => p.golferName)
       );
 
       setMessage("Editing existing entry");
@@ -360,6 +367,13 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
       {pool && (
         <div className="mt-1.5 opacity-80 text-sm">
           Entries close at: {new Date(pool.entriesCloseAt).toLocaleString()}
+        </div>
+      )}
+
+      {pool?.rulesText && (
+        <div className="mt-4 p-3 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-800">
+          <div className="font-bold mb-2">Rules</div>
+          <FormattedRulesText text={pool.rulesText} />
         </div>
       )}
 
@@ -470,12 +484,12 @@ export default function PublicPoolClient({ poolId }: { poolId: string }) {
         {golfers.length > 0 && unmatched.length > 0 && (
           <div className="mt-3 p-2.5 border border-amber-400 dark:border-amber-600 rounded bg-amber-50 dark:bg-amber-900 dark:bg-opacity-30 text-sm">
             <div className="font-semibold mb-1.5">
-              Some picks don't match the tournament field:
+              Some picks don&apos;t match the tournament field:
             </div>
             <ul className="m-0 pl-4.5 space-y-0.5">
               {unmatched.map((u) => (
                 <li key={u.idx}>
-                  Rank {u.idx + 1}: "{u.raw}"
+                  Rank {u.idx + 1}: &quot;{u.raw}&quot;
                 </li>
               ))}
             </ul>
